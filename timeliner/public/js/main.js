@@ -24,23 +24,17 @@ async function loadTimelineData() {
               // For events with a single timestamp (point-in-time), only set the start date
               return {
                   ...item,
-                  start: new Date(item.timestamp / 10**6), // Convert timestamp to Date object
+                  start: new Date(item.start * 1000), // Convert timestamp to Date object
+                  end: null,
                   type: 'point', // Mark this as a point event
-                  title: `Event Details: ${item.content} occurred at ${new Date(item.timestamp / 10**6)}`
+                  title: `Event Details: ${item.content} occurred at ${new Date(item.timestamp * 1000 )}`
               };
-          } else if (item.continuous && item.end == -1) {
-              return {
-                  ...item,
-                  start: new Date(item.start / 10 ** 6),
-                  end: new Date(),
-              }
-          }
-          else {
+          } else {
               // For events with a time range, set both start and end
               return {
                   ...item,
-                  start: new Date(item.start / 10**6), // Convert start timestamp to Date object
-                  end: new Date(item.end / 10**6),      // Convert end timestamp to Date object
+                  start: new Date(item.start  * 1000), // Convert start timestamp to Date object
+                  end: new Date(item.end  * 1000),      // Convert end timestamp to Date object
               };
           }
       }));
@@ -50,6 +44,8 @@ async function loadTimelineData() {
           start: new Date(new Date().setHours(0, 0, 0, 0)),
           end: new Date(1000 * 60 * 60 * 24 + new Date().valueOf()),
           editable: false,
+          showCurrentTime: false,
+          autoResize: false,
           margin: {
               item: 10, // Minimal margin between items
               axis: 5, // Minimal margin between items and the axis

@@ -22,8 +22,7 @@ class Timeliner < Sinatra::Base
   get '/', &->(){ slim :index }
 
   ajax_call :post, '/timeline_data' do |data|
-    res = get_backend_timelines_global_info
-    # { action: 'inserted', tid: 1 }
+    get_timeline_data
   end
 
   get '/healthcheck', &-> {  } # LOGGER.debug :healthcheck

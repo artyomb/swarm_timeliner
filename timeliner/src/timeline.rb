@@ -1,90 +1,75 @@
 require 'net/http'
 require 'uri'
 require 'json'
-require_relative 'service_action'
-require_relative 'convertion_for_js'
 
-RESULT_LIST_FOR_CONTAINER_EVENTS = []
-QUERY_FOR_CONTAINER_EVENTS = '{job="docker_events"} | json | Type = "container" and Action =~ "start|stop|update|kill"'
+CONTAINER_START_ACTIONS = %w[create exec_create exec_start start]
 
-RESULT_LIST_FOR_SERVICE_EVENTS = []
-QUERY_FOR_SERVICE_EVENTS = '{job="docker_events"} | json | Type = "service" and Action =~ "create|remove|update"'
+CONTAINER_STOP_ACTIONS = %w[destroy die exec_die kill stop]
+
+
+TRACKED_CONTAINER_EVENTS = %w[attach commit copy create destroy detach die exec_create
+                              exec_detach exec_die exec_start export health_status kill
+                              oom pause rename resize restart start stop top unpause update]
+
+TRACKED_SERVICE_EVENTS = %w[create remove update]
+
+QUERY_FOR_CONTAINER_EVENTS = '{job="docker_events"} | json | Type = "container" and Action =~ "' + TRACKED_CONTAINER_EVENTS.join('|') + '"'
+QUERY_FOR_SERVICE_EVENTS = '{job="docker_events"} | json | Type = "service" and Action =~ "' + TRACKED_SERVICE_EVENTS.join('|') + '"'
+COMBINED_QUERY = '{job="docker_events"} | json | ((Type = "container" and Action =~ "' +
+                  TRACKED_CONTAINER_EVENTS.join('|') + '") or (Type = "service" and Action =~ "' +
+                  TRACKED_SERVICE_EVENTS.join('|') + '"))'
 
 BASE_LOKI_URL = ENV.fetch('BASE_LOKI_URL', 'http://loki:3100/loki/api/v1')
+
 LIMIT = ENV.fetch('LIMIT', '0').to_i
 
-def update_logs_info
-  update_logs_info_for_container_events
-  update_logs_info_for_service_events
-end
+def get_timeline_data
+  uri = URI("#{BASE_LOKI_URL}/query_range")
+  params = { query: COMBINED_QUERY }
+  params[:limit] = LIMIT if LIMIT > 0
+  uri.query = URI.encode_www_form(params)
 
-def update_logs_info_for_container_events
-  begin
-    uri = URI("#{BASE_LOKI_URL}/query_range")
-    params = { query: QUERY_FOR_CONTAINER_EVENTS }
-    params[:limit] = LIMIT if LIMIT > 0
-    uri.query = URI.encode_www_form(params)
+  response = Net::HTTP.get_response(uri)
+  if response.code.to_i != 200
+    puts 'Failed to get response from Loki'
+    raise response.body
+  end
 
-    response = Net::HTTP.get_response(uri)
-    if response.code.to_i != 200
-      puts "Failed to get response from Loki"
-      raise response.body
+  data = JSON.parse response.body, symbolize_names: true
+  data = data[:data][:result].map { JSON.parse _1[:values][0][1], symbolize_names: true }
+  services = {}
+  items = {}
+  data.each do |rec|
+    if rec[:Type] == 'container'
+      cid = rec[:Actor][:ID]
+      svc_name = rec[:Actor][:Attributes][:'com.docker.swarm.service.name']
+
+      services[svc_name] ||= { containers: {}, events: [] }
+
+      # if (CONTAINER_START_ACTIONS + CONTAINER_STOP_ACTIONS).include? rec[:Action]
+        items[cid] = services[svc_name][:containers][cid] ||= { group: svc_name }
+        items[cid][:start] = rec[:time] if CONTAINER_START_ACTIONS.include? rec[:Action]
+        items[cid][:end] = rec[:time] if CONTAINER_STOP_ACTIONS.include? rec[:Action]
+
+        items[cid+'e'] ||= { group: svc_name, type: 'point', content: rec[:Action] }
+        items[cid+'e'][:start] = rec[:time]
+      # end
     end
 
-    # Assuming similar function in Ruby version of ServiceContainerActions
-    data = JSON.parse(response.body)
-    RESULT_LIST_FOR_CONTAINER_EVENTS.replace(ServiceContainerActions::ServiceContainerActionEntry.get_services_containers_data_by_loki_response(data))
-
-  rescue => e
-    puts "Error sending request: #{e}"
-  end
-end
-
-def update_logs_info_for_service_events
-  begin
-    uri = URI("#{BASE_LOKI_URL}/query_range")
-    params = { query: QUERY_FOR_SERVICE_EVENTS }
-    params[:limit] = LIMIT if LIMIT > 0
-    uri.query = URI.encode_www_form(params)
-
-    response = Net::HTTP.get_response(uri)
-    if response.code.to_i != 200
-      puts "Failed to get response from Loki"
-      raise response.body
-    end
-
-    # Assuming similar function in Ruby version of ServiceActions
-    data = JSON.parse(response.body)
-    RESULT_LIST_FOR_SERVICE_EVENTS.replace(ServiceActions::ServiceAction.get_services_actions_data_by_loki_response(data))
-
-  rescue => e
-    puts "Error sending request: #{e}"
-  end
-end
-
-def get_service_info(service_name)
-  update_logs_info
-  return RESULT_LIST_FOR_CONTAINER_EVENTS if service_name.nil?
-
-  RESULT_LIST_FOR_CONTAINER_EVENTS.each do |service|
-    return service if service.service_name == service_name
+    # if rec[:Type] == 'service'
+    #   svc_name = rec[:Actor][:Attributes][:'com.docker.swarm.service.name']
+    #   services[svc_name] ||= { containers: {}, events: [] }
+    #
+    #   # update, ...
+    #   services[:events] << {a:1 }
+    # end
   end
 
-  "Your service is not found"
-end
-
-def get_backend_timelines_global_info
-  update_logs_info
-
-  groups_container, items_container = get_groups_and_items_from_service_container_actions_entries(RESULT_LIST_FOR_CONTAINER_EVENTS)
-  groups_service, items_service = get_groups_and_items_from_service_actions_entries(RESULT_LIST_FOR_SERVICE_EVENTS)
-
-  merged_groups, merged_items = merge_groups_and_items_from_services_and_containers_actions(groups_container, items_container, groups_service, items_service)
-
-  result_dict = {
-    "groups" => merged_groups.map { |service_name| { "id" => service_name, "content" => service_name } },
-    "items" => merged_items.map(&:to_dict)
+ {
+    groups: services.map{ |n, v| {id: n, content: n}},
+    items: items.map{ |id, c| { id: id[/\d+/,1], **c,
+                                start: (c[:start] || (Time.now - 60*60*1).to_i),
+                                # end: (c[:end] || Time.now.to_i)
+    }}
   }
-
-  result_dict
 end
