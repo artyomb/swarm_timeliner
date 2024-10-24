@@ -1,0 +1,19 @@
+services:
+  swarm_timeliner:
+    image: ${REGISTRY_HOST}/swarm_timeliner
+    build:
+      context: ../timeliner
+      dockerfile: ../docker/ruby/Dockerfile
+      cache_from:
+        - type=gha,scope=swarm_timeliner
+      cache_to:
+        - type=gha,scope=swarm_timeliner,mode=max
+    volumes:
+    - "/var/run/docker.sock:/var/run/docker.sock:rw"
+    ports:
+      - 7000:7000
+    environment:
+      PORT: 7000
+      OTEL_LOG_LEVEL: debug
+      OTEL_TRACES_EXPORTER: console,otlp
+      OTEL_EXPORTER_OTLP_ENDPOINT: http://otel.next/
