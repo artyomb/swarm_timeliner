@@ -4,8 +4,8 @@ require 'opentelemetry/instrumentation/all'
 require 'opentelemetry-api'
 require 'async'
 
-STACK_NAME = ENV['STACK_NAME'] || 'registry_listener'
-SERVICE_NAME = ENV['STACK_SERVICE_NAME'] || 'registry_listener'
+STACK_NAME = ENV['STACK_NAME'] || File.basename(__dir__)
+SERVICE_NAME = ENV['STACK_SERVICE_NAME'] || File.basename(__dir__)
 ENV['OTEL_RESOURCE_ATTRIBUTES'] ||= "deployment.environment=#{STACK_NAME}"
 
 LOGGER.info OTEL_LOG_LEVEL: ENV['OTEL_LOG_LEVEL'],
