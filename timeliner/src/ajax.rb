@@ -10,15 +10,20 @@ module Ajax
     def to_json(*_args) = @response.to_json
   end
 
-  def parse_data
-    data = params # rack.request.form_hash', 'rack.request.form_imput', 'rack.tempfile'
-    if @env['CONTENT_TYPE'] =~ /application\/json/
-      body_str = request.body.read
-      body_str.force_encoding 'utf-8'
-      data = body_str.empty? ? {} : JSON.parse(body_str, symbolize_names: true)
+  def self.extended(base)
+    base.class_eval do
+      def parse_data
+        data = params # rack.request.form_hash', 'rack.request.form_imput', 'rack.tempfile'
+        if @env['CONTENT_TYPE'] =~ /application\/json/
+          body_str = request.body.read
+          body_str.force_encoding 'utf-8'
+          data = body_str.empty? ? {} : JSON.parse(body_str, symbolize_names: true)
+        end
+        data
+      end
     end
-    data
   end
+
 
   def exception2halt(&block)
     proc do |**args|
