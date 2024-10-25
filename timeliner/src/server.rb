@@ -25,7 +25,7 @@ class Timeliner < Sinatra::Base
     get_timeline_data
   end
 
-  get '/healthcheck', &-> {  } # LOGGER.debug :healthcheck
+  get '/healthcheck', &-> { 'OK' } # LOGGER.debug :healthcheck
 
   error do
     "<h1>Error: #{env['sinatra.error']}</h1> <pre>#{env['sinatra.error'].backtrace.join("\n")}</pre>"

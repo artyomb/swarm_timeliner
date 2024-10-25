@@ -1,20 +1,8 @@
-function gup(name) {
-  name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
-  var regexS = "[\\?&]" + name + "=([^&#]*)";
-  var regex = new RegExp(regexS);
-  var results = regex.exec(window.location.href);
-  if (results == null) return "";
-  else return results[1];
-}
-
-// get selected item count from url parameter
-var count = Number(gup("count")) || 1000;
-
 async function loadTimelineData() {
   try {
       const response = await fetch('/timeline_data', {
           method: 'POST', headers: { 'Content-Type': 'application/json'},
-          body: JSON.stringify({ count: count})
+          body: JSON.stringify({ logs_interval: 60 * 1})
       });
 
       const data = await response.json(); // Parse JSON data
@@ -83,7 +71,6 @@ async function loadTimelineData() {
           }
       });
   } catch (error) {
-      document.getElementById("count").innerHTML = "Error handled with error: " + error;
       console.error("Error loading timeline data:", error);
   }
 }// Call the function to load the timeline data
