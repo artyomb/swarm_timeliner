@@ -39,8 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 start: new Date(new Date().setHours(0, 0, 0, 0)),
                 end: new Date(1000 * 60 * 60 * 24 + new Date().valueOf()),
                 editable: false,
-                showCurrentTime: false,
-                autoResize: false,
+                // showCurrentTime: false,
+                // autoResize: false,
                 margin: {
                     item: 10, // Minimal margin between items
                     axis: 5, // Minimal margin between items and the axis
@@ -72,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
                     // Check if the item has the backend_path field
                     if (selectedItem.backend_path) {
-                        const url = `/get-container-logs/${selectedItem.backend_path}`;
+                        const url = `/get-container-logs/${selectedItem.id}`;
                         window.location.href = url; // Redirect the browser to the generated URL
                     }
                 }
