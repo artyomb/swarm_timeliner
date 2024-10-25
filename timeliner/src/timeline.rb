@@ -21,12 +21,19 @@ COMBINED_QUERY = '{job="docker_events"} | json | ((Type = "container" and Action
 
 BASE_LOKI_URL = ENV.fetch('BASE_LOKI_URL', 'http://loki:3100/loki/api/v1')
 
-LIMIT = ENV.fetch('LIMIT', '0').to_i
 
-def get_timeline_data
+def get_timeline_data(data)
+limit = begin
+             data[:limit].to_i
+           rescue
+             -1
+           end || -1
+  since = data[:since]
+
   uri = URI("#{BASE_LOKI_URL}/query_range")
   params = { query: COMBINED_QUERY }
-  params[:limit] = LIMIT if LIMIT > 0
+  params[:limit] = limit if limit > 0
+  params[:since] = since if since != 'all'
   uri.query = URI.encode_www_form(params)
 
   response = Net::HTTP.get_response(uri)

@@ -22,7 +22,7 @@ class Timeliner < Sinatra::Base
   get '/', &->(){ slim :index }
 
   ajax_call :post, '/timeline_data' do |data|
-    get_timeline_data
+    get_timeline_data(data)
   end
 
   get '/healthcheck', &-> { 'OK' } # LOGGER.debug :healthcheck
