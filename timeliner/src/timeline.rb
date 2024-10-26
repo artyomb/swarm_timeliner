@@ -23,7 +23,7 @@ BASE_LOKI_URL = ENV.fetch('BASE_LOKI_URL', 'http://loki:3100/loki/api/v1')
 
 
 def get_timeline_data(data)
-limit = begin
+  limit = begin
              data[:limit].to_i
            rescue
              -1
@@ -45,38 +45,40 @@ limit = begin
   data = JSON.parse response.body, symbolize_names: true
   data = data[:data][:result].map { JSON.parse _1[:values][0][1], symbolize_names: true }
   services = {}
-  items = {}
   data.each do |rec|
+    svc_name = rec[:Actor][:Attributes][:'com.docker.swarm.service.name']
+    cid = rec[:Actor][:ID]
+    action = rec[:Action]
+    timestamp = rec[:time]
+    ext_code = rec[:Actor][:Attributes][:exitCode]
+    services[svc_name] ||= { containers: {}, events: [] }
     if rec[:Type] == 'container'
-      cid = rec[:Actor][:ID]
-      svc_name = rec[:Actor][:Attributes][:'com.docker.swarm.service.name']
-
-      services[svc_name] ||= { containers: {}, events: [] }
-
-      # if (CONTAINER_START_ACTIONS + CONTAINER_STOP_ACTIONS).include? rec[:Action]
-        items[cid] = services[svc_name][:containers][cid] ||= { group: svc_name }
-        items[cid][:start] = rec[:time] if CONTAINER_START_ACTIONS.include? rec[:Action]
-        items[cid][:end] = rec[:time] if CONTAINER_STOP_ACTIONS.include? rec[:Action]
-
-        items[cid+'e'] ||= { group: svc_name, type: 'point', content: rec[:Action] }
-        items[cid+'e'][:start] = rec[:time]
-      # end
+      services[svc_name][:containers][cid] ||= { start: nil, end: nil, events: [] }
+      services[svc_name][:containers][cid][:events] << { action: action, timestamp: timestamp, ext_code: ext_code }
+      services[svc_name][:containers][cid][:start] = timestamp if ((CONTAINER_START_ACTIONS.include? action) && ((services[svc_name][:containers][cid][:start] == nil) || (services[svc_name][:containers][cid][:start] > timestamp)))
+      services[svc_name][:containers][cid][:end] = timestamp if ((CONTAINER_STOP_ACTIONS.include? action) && ((services[svc_name][:containers][cid][:end] == nil) || (services[svc_name][:containers][cid][:end] < timestamp)))
     end
-
     # if rec[:Type] == 'service'
     #   svc_name = rec[:Actor][:Attributes][:'com.docker.swarm.service.name']
     #   services[svc_name] ||= { containers: {}, events: [] }
-    #
-    #   # update, ...
-    #   services[:events] << {a:1 }
     # end
   end
 
- {
-    groups: services.map{ |n, v| {id: n, content: n}},
-    items: items.map{ |id, c| { id: id[/\d+/,1], **c,
-                                start: (c[:start] || (Time.now - 60*60*1).to_i),
-                                # end: (c[:end] || Time.now.to_i)
-    }}
+  # results = {
+  #   groups: services.map{ |n, v| {id: n, content: n}},
+  #   items: items.map{ |id, c| ...}
+  # }
+  # results [:items].append(items.map {|id,c|}})
+  {
+    "groups": [
+      { "id": "service1", "name": "Service 1", "type": "service", "containers": ["container1", "container2"] },
+      { "id": "container1", "name": "Container 1", "type": "container" },
+      { "id": "container2", "name": "Container 2", "type": "container" }
+    ],
+    "items": [
+      { "id": "event1", "content": "Service event", "type": "point", "groupId": "service1", "start": 1672531200 },
+      { "id": "event2", "content": "Container 1 event", "type": "point", "groupId": "container1", "start": 1672532200 },
+      { "id": "event3", "content": "Container 2 event", "type": "range", "groupId": "container2", "start": 1672533000, "end": 1672536600 }
+    ]
   }
 end
