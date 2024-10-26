@@ -71,14 +71,51 @@ def get_timeline_data(data)
   # results [:items].append(items.map {|id,c|}})
   {
     "groups": [
-      { "id": "service1", "name": "Service 1", "type": "service", "containers": ["container1", "container2"] },
-      { "id": "container1", "name": "Container 1", "type": "container" },
-      { "id": "container2", "name": "Container 2", "type": "container" }
+      { "id": "service1", "name": "Service 1", "type": "service", "containers": ["container1_1", "container1_2", "container1_3"] },
+      { "id": "container1_1", "name": "Container 1-1", "type": "container" },
+      { "id": "container1_2", "name": "Container 1-2", "type": "container" },
+      { "id": "container1_3", "name": "Container 1-3", "type": "container" },
+
+      { "id": "service2", "name": "Service 2", "type": "service", "containers": ["container2_1", "container2_2"] },
+      { "id": "container2_1", "name": "Container 2-1", "type": "container" },
+      { "id": "container2_2", "name": "Container 2-2", "type": "container" },
+
+      { "id": "service3", "name": "Service 3", "type": "service", "containers": ["container3_1", "container3_2", "container3_3", "container3_4"] },
+      { "id": "container3_1", "name": "Container 3-1", "type": "container" },
+      { "id": "container3_2", "name": "Container 3-2", "type": "container" },
+      { "id": "container3_3", "name": "Container 3-3", "type": "container" },
+      { "id": "container3_4", "name": "Container 3-4", "type": "container" },
+
+      { "id": "service4", "name": "Service 4", "type": "service" }
     ],
     "items": [
-      { "id": "event1", "content": "Service event", "type": "point", "groupId": "service1", "start": 1672531200 },
-      { "id": "event2", "content": "Container 1 event", "type": "point", "groupId": "container1", "start": 1672532200 },
-      { "id": "event3", "content": "Container 2 event", "type": "range", "groupId": "container2", "start": 1672533000, "end": 1672536600 }
+      { "id": "service1_event1", "content": "Service 1 Event A", "type": "point", "groupId": "service1", "start": 1672531200 },
+      { "id": "service1_event2", "content": "Service 1 Event B", "type": "point", "groupId": "service1", "start": 1672534800 },
+      { "id": "service1_event3", "content": "Service 1 Event C", "type": "point", "groupId": "service1", "start": 1672538400 },
+      { "id": "service2_event1", "content": "Service 2 Event A", "type": "point", "groupId": "service2", "start": 1672531800 },
+      { "id": "service2_event2", "content": "Service 2 Event B", "type": "point", "groupId": "service2", "start": 1672535400 },
+      { "id": "service2_event3", "content": "Service 2 Event C", "type": "point", "groupId": "service2", "start": 1672539000 },
+      #
+      { "id": "service3_event1", "content": "Service 3 Event A", "type": "point", "groupId": "service3", "start": 1672532400 },
+      { "id": "service3_event2", "content": "Service 3 Event B", "type": "point", "groupId": "service3", "start": 1672536000 },
+      { "id": "service3_event3", "content": "Service 3 Event C", "type": "point", "groupId": "service3", "start": 1672539600 },
+      #
+      { "id": "service4_event1", "content": "Service 4 Event A", "type": "point", "groupId": "service4", "start": 1672533000 },
+      { "id": "service4_event2", "content": "Service 4 Event B", "type": "point", "groupId": "service4", "start": 1672536600 },
+      { "id": "service4_event3", "content": "Service 4 Event C", "type": "point", "groupId": "service4", "start": 1672540200 },
+      #
+      { "id": "container1_1", "content": "Container 1-1 Active", "type": "range", "groupId": "container1_1", "start": 1672527600, "end": 1672539200 },
+      { "id": "container1_1_event1", "content": "Event 1", "type": "point", "groupId": "container1_1", "start": 1672528800 },
+      { "id": "container1_1_event2", "content": "Event 2", "type": "point", "groupId": "container1_1", "start": 1672530000 },
+      { "id": "container1_1_event3", "content": "Event 3", "type": "point", "groupId": "container1_1", "start": 1672531200 },
+      #
+      { "id": "container1_2", "content": "Container 1-2 Active", "type": "range", "groupId": "container1_2", "start": 1672527600, "end": 1672538600 },
+      { "id": "container1_2_event1", "content": "Event 1", "type": "point", "groupId": "container1_2", "start": 1672529400 },
+      { "id": "container1_2_event2", "content": "Event 2", "type": "point", "groupId": "container1_2", "start": 1672530600 },
+      #
+      { "id": "container2_1", "content": "Container 2-1 Active", "type": "range", "groupId": "container2_1", "start": 1672529400, "end": 1672536000 },
+      { "id": "container2_1_event1", "content": "Event 1", "type": "point", "groupId": "container2_1", "start": 1672530000 },
+      { "id": "container2_1_event2", "content": "Event 2", "type": "point", "groupId": "container2_1", "start": 1672533600 },
     ]
   }
 end
