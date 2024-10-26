@@ -1,17 +1,16 @@
 document.addEventListener('DOMContentLoaded', () => {
     async function loadTimelineData() {
         try {
+            const timeSelectValue = document.getElementById('timeSelect').value;
+            let logsLimitValue = document.getElementById('logsLimit').value;
+            logsLimitValue = /^[0-9]+$/.test(logsLimitValue) ? parseInt(logsLimitValue, 10) : null;
             const response = await fetch('/timeline_data', {
-                method: 'POST', headers: { 'Content-Type': 'application/json'},
-                body: JSON.stringify({ since: document.getElementById('timeSelect').value,
-                    limit : document.getElementById("logLimit")}),
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json'},
+                body: JSON.stringify({ since: timeSelectValue, limit: logsLimitValue}),
             });
 
             const data = await response.json(); // Parse JSON data
-            const element = document.getElementById("visualization");
-            if (element) {
-                element.innerHTML = '';
-            }
 
             const groups = new vis.DataSet(data.groups); // Use groups from the backend response
             const items = new vis.DataSet(data.items.map(item => {
@@ -59,7 +58,10 @@ document.addEventListener('DOMContentLoaded', () => {
             };
 
             // Create the timeline
-            var container = document.getElementById("visualization");
+            const container = document.getElementById("visualization");
+            if (container) {
+                container.innerHTML = '';
+            }
             var timeline = new vis.Timeline(container, items, options);
             timeline.setGroups(groups);
             window.addEventListener("resize", () => {
@@ -85,7 +87,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const timeSelect = document.getElementById('timeSelect');
     timeSelect.addEventListener('change', () => {
         const selectedTimePeriod = timeSelect.value; // <-- Fix 'this.value' by using 'timeSelect.value'
-        console.log(`Selected time period: ${selectedTimePeriod}`);
     });
 
     const refreshButton = document.getElementById('refreshButton');

@@ -8,7 +8,6 @@ sass:
 html lang="en"
   head
     title Swarm Timeline Visualization
-    link href="../css/style.css" rel="stylesheet" type="text/css"
     link href="https://unpkg.com/vis-timeline/styles/vis-timeline-graph2d.min.css" rel="stylesheet" type="text/css"
     link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet"
     script src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.21.0/vis.min.js"
@@ -26,11 +25,8 @@ html lang="en"
         option value="12h" Last 12 hours
         option value="1d" Last day
         option value="all" All
-    label for="logLimit" Limit:
-    input#logLimit type="text" placeholder="1" pattern="^[0-9]*$" title="Enter a positive integer or '-' for no limit"
+    label for="logsLimit" Limit:
+    input#logsLimit type="text" value="10" pattern="^[0-9]*$" title="Enter a positive integer or '-' for no limit"
     button#refreshButton Refresh TL
 
     div id="visualization"
-
-    javascript:
-      console.log("Hello");
