@@ -36,6 +36,17 @@ def get_timeline_data(data)
   params[:since] = since if since != 'all'
   uri.query = URI.encode_www_form(params)
 
+  ### GPT ###
+  # http = Net::HTTP.new(uri.host, uri.port)
+  # http.use_ssl = (uri.scheme == "https")
+  # http.read_timeout = 120  # Set read timeout to 120 seconds (adjust as needed)
+  # http.open_timeout = 10   # Optional: Set open timeout
+
+  # Send the request
+  # request = Net::HTTP::Get.new(uri)
+  # response = http.request(request)
+  ### GPT ###
+
   response = Net::HTTP.get_response(uri)
   if response.code.to_i != 200
     puts 'Failed to get response from Loki'
@@ -58,64 +69,22 @@ def get_timeline_data(data)
       services[svc_name][:containers][cid][:start] = timestamp if ((CONTAINER_START_ACTIONS.include? action) && ((services[svc_name][:containers][cid][:start] == nil) || (services[svc_name][:containers][cid][:start] > timestamp)))
       services[svc_name][:containers][cid][:end] = timestamp if ((CONTAINER_STOP_ACTIONS.include? action) && ((services[svc_name][:containers][cid][:end] == nil) || (services[svc_name][:containers][cid][:end] < timestamp)))
     end
-    # if rec[:Type] == 'service'
-    #   svc_name = rec[:Actor][:Attributes][:'com.docker.swarm.service.name']
-    #   services[svc_name] ||= { containers: {}, events: [] }
-    # end
+    if rec[:Type] == 'service'
+      services[svc_name] ||= { containers: {}, events: [] }
+      services[svc_name][:events] << {action: action, timestamp: timestamp, ext_code: ext_code}
+    end
   end
-
-  # results = {
-  #   groups: services.map{ |n, v| {id: n, content: n}},
-  #   items: items.map{ |id, c| ...}
-  # }
-  # results [:items].append(items.map {|id,c|}})
-  {
-    "groups": [
-      { "id": "service1", "name": "Service 1", "type": "service", "containers": ["container1_1", "container1_2", "container1_3"] },
-      { "id": "container1_1", "name": "Container 1-1", "type": "container" },
-      { "id": "container1_2", "name": "Container 1-2", "type": "container" },
-      { "id": "container1_3", "name": "Container 1-3", "type": "container" },
-
-      { "id": "service2", "name": "Service 2", "type": "service", "containers": ["container2_1", "container2_2"] },
-      { "id": "container2_1", "name": "Container 2-1", "type": "container" },
-      { "id": "container2_2", "name": "Container 2-2", "type": "container" },
-
-      { "id": "service3", "name": "Service 3", "type": "service", "containers": ["container3_1", "container3_2", "container3_3", "container3_4"] },
-      { "id": "container3_1", "name": "Container 3-1", "type": "container" },
-      { "id": "container3_2", "name": "Container 3-2", "type": "container" },
-      { "id": "container3_3", "name": "Container 3-3", "type": "container" },
-      { "id": "container3_4", "name": "Container 3-4", "type": "container" },
-
-      { "id": "service4", "name": "Service 4", "type": "service" }
-    ],
-    "items": [
-      { "id": "service1_event1", "content": "Service 1 Event A", "type": "point", "groupId": "service1", "start": 1672531200 },
-      { "id": "service1_event2", "content": "Service 1 Event B", "type": "point", "groupId": "service1", "start": 1672534800 },
-      { "id": "service1_event3", "content": "Service 1 Event C", "type": "point", "groupId": "service1", "start": 1672538400 },
-      { "id": "service2_event1", "content": "Service 2 Event A", "type": "point", "groupId": "service2", "start": 1672531800 },
-      { "id": "service2_event2", "content": "Service 2 Event B", "type": "point", "groupId": "service2", "start": 1672535400 },
-      { "id": "service2_event3", "content": "Service 2 Event C", "type": "point", "groupId": "service2", "start": 1672539000 },
-      #
-      { "id": "service3_event1", "content": "Service 3 Event A", "type": "point", "groupId": "service3", "start": 1672532400 },
-      { "id": "service3_event2", "content": "Service 3 Event B", "type": "point", "groupId": "service3", "start": 1672536000 },
-      { "id": "service3_event3", "content": "Service 3 Event C", "type": "point", "groupId": "service3", "start": 1672539600 },
-      #
-      { "id": "service4_event1", "content": "Service 4 Event A", "type": "point", "groupId": "service4", "start": 1672533000 },
-      { "id": "service4_event2", "content": "Service 4 Event B", "type": "point", "groupId": "service4", "start": 1672536600 },
-      { "id": "service4_event3", "content": "Service 4 Event C", "type": "point", "groupId": "service4", "start": 1672540200 },
-      #
-      { "id": "container1_1", "content": "Container 1-1 Active", "type": "range", "groupId": "container1_1", "start": 1672527600, "end": 1672539200 },
-      { "id": "container1_1_event1", "content": "Event 1", "type": "point", "groupId": "container1_1", "start": 1672528800 },
-      { "id": "container1_1_event2", "content": "Event 2", "type": "point", "groupId": "container1_1", "start": 1672530000 },
-      { "id": "container1_1_event3", "content": "Event 3", "type": "point", "groupId": "container1_1", "start": 1672531200 },
-      #
-      { "id": "container1_2", "content": "Container 1-2 Active", "type": "range", "groupId": "container1_2", "start": 1672527600, "end": 1672538600 },
-      { "id": "container1_2_event1", "content": "Event 1", "type": "point", "groupId": "container1_2", "start": 1672529400 },
-      { "id": "container1_2_event2", "content": "Event 2", "type": "point", "groupId": "container1_2", "start": 1672530600 },
-      #
-      { "id": "container2_1", "content": "Container 2-1 Active", "type": "range", "groupId": "container2_1", "start": 1672529400, "end": 1672536000 },
-      { "id": "container2_1_event1", "content": "Event 1", "type": "point", "groupId": "container2_1", "start": 1672530000 },
-      { "id": "container2_1_event2", "content": "Event 2", "type": "point", "groupId": "container2_1", "start": 1672533600 },
-    ]
+  collected_values = services.keys.flat_map { |svc_name| services[svc_name][:containers].keys.map { |cid| { id: cid, name: cid, type: 'container'} } }
+  serviceev_items = services.keys.flat_map { |svc_name| services[svc_name][:events].map {|event| {id: svc_name, content: event[:action], ext_code: event[:ext_code], type: 'point', groupId: svc_name, start: event[:timestamp]}}}
+  containerev_items = services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| cont[:events].map {|event| {id: cid + event[:action] + event[:timestamp].to_s, content: event[:action], type: 'point', groupId: cid, start: event[:timestamp] } } } }
+  container_items = services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| { id: cid, content: "Container " + cid, type: 'range', groupId: cid, start: cont[:start], end: cont[:end] } } }
+  results = {
+    groups: services.map { |n, v| {id: n, name: n, type: 'service', containers: v[:containers].keys } }  +
+      services.keys.flat_map { |svc_name| services[svc_name][:containers].keys.flat_map { |cid| { id: cid, name: cid, type: 'container'} } },
+    items: services.keys.flat_map { |svc_name| services[svc_name][:containers].flat_map {|cid, cont| cont[:events].map {|event| {id: cid + event[:action] + event[:timestamp].to_s, content: event[:action], type: 'point', groupId: cid, start: event[:timestamp] } } } } +    # container_events
+      services.keys.flat_map { |svc_name| services[svc_name][:events].flat_map {|event| {id: svc_name, content: event[:action], ext_code: event[:ext_code], type: 'point', groupId: svc_name, start: event[:timestamp] } } } +    # service_events
+      services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| {id: cid, content: "Container " + cid, type: 'range', groupId: cid, start: cont[:start], end: cont[:end] } } }   # containers
   }
+  results
 end
+# Iterating through all service keys, for each key get [:containers].keys, iterating through them and extract dict with {field: val, field2 :val2} end collect this dicts with values into one array 

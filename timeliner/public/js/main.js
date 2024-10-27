@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const timeSelectValue = document.getElementById('timeSelect').value;
             let logsLimitValue = document.getElementById('logsLimit').value;
             logsLimitValue = /^[0-9]+$/.test(logsLimitValue) ? parseInt(logsLimitValue, 10) : null;
+            console.log("Logs value is " + logsLimitValue.toString());
             const response = await fetch('/timeline_data', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json'},
