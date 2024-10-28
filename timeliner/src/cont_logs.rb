@@ -9,15 +9,13 @@ def get_container_logs(container_id)
     container = Docker::Container.get(container_id)
     logs = container.logs(stdout: true, stderr: true)
     logs = logs.encode('UTF-8', "ISO-8859-15")
+    { status: "SUCCESS", message: logs }.to_json
   rescue Docker::Error::NotFoundError
-    { status: 'ERROR', message: 'Container not found' }.to_json
+    { status: "ERROR", message: "Container not found" }.to_json
   rescue Docker::Error::TimeoutError
-    { status: 'ERROR', message: 'Request to Docker timed out' }.to_json
-  rescue Encoding::UndefinedConversionError => e
-    { status: 'ERROR', message: "Encoding error: #{e.message}" }.to_json
+    { status: "ERROR", message: "Request to Docker timed out" }.to_json
   rescue StandardError => e
-    { status: 'ERROR', message: "Unexpected error: #{e.message}" }.to_json
+    { status: "ERROR", message: "Unexpected error: #{e.message}" }.to_json
   end
 end
 
-# Without encoding responses with errors: Unexpected error: "\xE4" from ASCII-8BIT to UTF-8
