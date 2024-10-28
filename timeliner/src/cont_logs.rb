@@ -7,8 +7,8 @@ Docker.url = 'unix:///var/run/docker.sock'
 def get_container_logs(container_id)
   begin
     container = Docker::Container.get(container_id)
-    logs = container.logs(stdout: true, stderr: true, encoding: 'UTF-8')
-    { status: 'SUCCESS', message: logs.force_encoding('UTF-8') }.to_json
+    logs = container.logs(stdout: true, stderr: true)
+    logs = logs.encode('UTF-8', "ISO-8859-15")
   rescue Docker::Error::NotFoundError
     { status: 'ERROR', message: 'Container not found' }.to_json
   rescue Docker::Error::TimeoutError
