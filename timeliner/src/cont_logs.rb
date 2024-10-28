@@ -8,7 +8,7 @@ def get_container_logs(container_id)
   begin
     container = Docker::Container.get(container_id)
     logs = container.logs(stdout: true, stderr: true)
-    logs = logs.force_encoding('BINARY').encode('UTF-8', invalid: :replace, undefined: :replace, replace: '')
+    logs = logs.encode('UTF-8', "ISO-8859-15")
     { status: "SUCCESS", message: logs }.to_json
   rescue Docker::Error::NotFoundError
     { status: "ERROR", message: "Container not found" }.to_json
