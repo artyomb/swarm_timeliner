@@ -39,7 +39,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 start: new Date(new Date().setHours(0, 0, 0, 0)),
                 end: new Date(1000 * 60 * 60 * 24 + new Date().valueOf()),
                 editable: false,
-                margin: { item: 10, axis: 5 }
+                margin: { item: 10, axis: 5 },
+                showCurrentTime: false
             };
 
             // Create the timeline
