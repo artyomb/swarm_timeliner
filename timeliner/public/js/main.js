@@ -81,7 +81,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         </head>
                                         <body>
                                             <h1>Response Data</h1>
-                                            <pre>${JSON.stringify(data, null, 2)}</pre> <!-- Format JSON -->
+                                            <pre>${data}</pre>
                                         </body>
                                     </html>
                                 `);
