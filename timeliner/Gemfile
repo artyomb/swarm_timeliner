@@ -16,7 +16,7 @@ gem 'sinatra-contrib'
 gem 'slim'
 gem 'rack-sassc'
 gem 'rest-client'
-
+gem 'docker-api'
 
 gem 'opentelemetry-sdk'
 gem 'opentelemetry-exporter-otlp'

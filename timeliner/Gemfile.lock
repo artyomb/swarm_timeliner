@@ -34,7 +34,11 @@ GEM
       fiber-annotation
       fiber-local (~> 1.1)
       json
+    docker-api (2.3.0)
+      excon (>= 0.64.0)
+      multi_json
     domain_name (0.6.20240107)
+    excon (1.0.0)
     falcon (0.48.3)
       async
       async-container (~> 0.18)
@@ -363,6 +367,7 @@ PLATFORMS
 
 DEPENDENCIES
   async-io
+  docker-api
   falcon
   json
   opentelemetry-exporter-otlp
