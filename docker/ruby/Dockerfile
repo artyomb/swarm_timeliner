@@ -16,6 +16,7 @@ RUN bundle install --jobs $(nproc)
 FROM ruby:3.3.1-alpine AS deploy
 
 RUN apk add docker-cli openssh-client bash curl jq && rm -rf /var/cache/apk/*
+#RUN apt update && apt install -y curl docker.io  # May be needed for docker interaction
 
 COPY --from=base /usr/local/bundle /usr/local/bundle
 

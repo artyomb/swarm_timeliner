@@ -4,6 +4,7 @@ require 'slim'
 require 'rack/sassc'
 require_relative 'ajax'
 require_relative 'timeline.rb'
+require_relative 'cont_logs.rb'
 # require 'sinatra/reloader'  if `hostname` =~ /yoga/i && !ENV["COMPILED"]
 
 
@@ -25,6 +26,9 @@ class Timeliner < Sinatra::Base
     get_timeline_data(data)
   end
 
+  ajax_call :post, '/get_cont_logs' do |data|
+    get_container_logs(data[:cont_id])
+  end
   get '/healthcheck', &-> { 'OK' } # LOGGER.debug :healthcheck
 
   error do
