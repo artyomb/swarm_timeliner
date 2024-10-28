@@ -60,16 +60,17 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (selectedItem.backend_init) {
                         const backend_path = '/get_cont_logs';
                         try {
-                            const response = await fetch(backend_path, selectedItem.backend_init);
-                            if (!response.ok) {
-                                throw new Error(`Error: ${response.statusText}`);
+                            const logs_response = await fetch(backend_path, selectedItem.backend_init);
+                            if (!logs_response.ok) {
+                                throw new Error(`Error: ${logs_response.statusText}`);
                             }
-                            const data = await response.json();
+                            const logs_data = await logs_response.json();
                             const newTab = window.open('', '_blank');
 
                             // Write the JSON response to the new tab as formatted HTML
                             if (newTab) {
                                 newTab.document.open();
+                                const json_data = JSON.parse(logs_data);
                                 newTab.document.write(`
                                     <html>
                                         <head>
@@ -81,7 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         </head>
                                         <body>
                                             <h1>Response Data</h1>
-                                            <pre>${data}</pre>
+                                            <pre>${json_data.message}</pre>
                                         </body>
                                     </html>
                                 `);
