@@ -1,11 +1,11 @@
 document.addEventListener('DOMContentLoaded', () => {
-    async function loadTimelineData() {
+    async function loadTimelineData(backend_path='/timeline_data') {
         try {
             const timeSelectValue = document.getElementById('timeSelect').value;
             let logsLimitValue = document.getElementById('logsLimit').value;
             logsLimitValue = /^[0-9]+$/.test(logsLimitValue) ? parseInt(logsLimitValue, 10) : null;
             console.log("Logs value is " + logsLimitValue.toString());
-            const response = await fetch('/timeline_data', {
+            const response = await fetch(backend_path, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json'},
                 body: JSON.stringify({ since: timeSelectValue, limit: logsLimitValue}),
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const className = `${typeClass} ${statusClasses}`.trim();
                 return {
                     ...item,
-                    content: item.content.length > 6 ? item.content.substring(0, 6) + '...' : item.content,
+                    content: item.content.length > 9 ? item.content.substring(0, 6) + '...' : item.content,
                     group: item.groupId, // Associate item with a group ID (container or service)
                     start: new Date(item.start * 1000),
                     end: item.type === 'range' ? new Date(item.end * 1000) : null,
@@ -117,9 +117,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const refreshButton = document.getElementById('refreshButton');
     refreshButton.addEventListener('click', () => {
-        loadTimelineData();
+        loadTimelineData('/timeline_data');
     });
-    loadTimelineData();
+    const healthChecksButton = document.getElementById('healthChecksButton');
+    healthChecksButton.addEventListener('click', () => {
+        loadTimelineData('/get_health_checks');
+    });
+    loadTimelineData('/timeline_data');
 });
 
 

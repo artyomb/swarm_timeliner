@@ -105,10 +105,6 @@ def get_timeline_data(data)
       services[svc_name][:events] << { action: action, timestamp: timestamp, ext_code: ext_code }
     end
   end
-  # collected_values = services.keys.flat_map { |svc_name| services[svc_name][:containers].keys.map { |cid| { id: cid, name: cid, type: 'container'} } }
-  # serviceev_items = services.keys.flat_map { |svc_name| services[svc_name][:events].map {|event| {id: svc_name, content: event[:action], ext_code: event[:ext_code], type: 'point', groupId: svc_name, start: event[:timestamp]}}}
-  # containerev_items = services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| cont[:events].map {|event| {id: cid + event[:action] + event[:timestamp].to_s, content: event[:action], type: 'point', groupId: cid, start: event[:timestamp] } } } }
-  # container_items = services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| { id: cid, content: "Container " + cid, type: 'range', groupId: cid, start: cont[:start], end: cont[:end] } } }
   results = {
     groups: services.map { |n, v| { id: n, name: n, type: 'service', containers: v[:containers].keys } }  +
       services.keys.flat_map { |svc_name| services[svc_name][:containers].keys.flat_map { |cid| { id: cid, name: cid, type: 'container' } } },
@@ -118,4 +114,3 @@ def get_timeline_data(data)
   }
   results
 end
-# Iterating through all service keys, for each key get [:containers].keys, iterating through them and extract dict with {field: val, field2 :val2} end collect this dicts with values into one array 
