@@ -24,7 +24,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }));
             const items = new vis.DataSet(data.items.map(item => {
-                // Set 'group' to the container or service it belongs to
                 const typeClass = item.type === 'point' ? 'event-point' : 'container-event';
                 const statusClasses = Array.isArray(item.statuses) && item.statuses.length ? item.statuses.join(' ') : '';
                 const className = `${typeClass} ${statusClasses}`.trim();

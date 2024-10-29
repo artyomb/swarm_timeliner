@@ -4,7 +4,7 @@ require 'json'
 
 CONTAINER_START_ACTIONS = %w[create exec_create exec_start start]
 
-CONTAINER_STOP_ACTIONS = %w[destroy die exec_die kill stop]
+CONTAINER_STOP_ACTIONS = %w[destroy die kill stop]
 
 
 TRACKED_CONTAINER_EVENTS = %w[attach commit copy create destroy detach die exec_create
@@ -35,7 +35,7 @@ end
 
 def get_status_cont(start, end_val, latest_start)
   statuses = []
-  if end_val.nil? || latest_start.nil? || end_val < latest_start
+  if end_val.nil? || (!latest_start.nil? && end_val < latest_start)
     statuses << 'ok'
   else
     statuses << 'neutral'
@@ -109,7 +109,7 @@ def get_timeline_data(data)
     groups: services.map { |n, v| { id: n, name: n, type: 'service', containers: v[:containers].keys } }  +
       services.keys.flat_map { |svc_name| services[svc_name][:containers].keys.flat_map { |cid| { id: cid, name: cid, type: 'container' } } },
     items: services.keys.flat_map { |svc_name| services[svc_name][:containers].flat_map {|cid, cont| cont[:events].map {|event| { id: cid + " " + event[:action] + " " + event[:timestamp].to_s, content: event[:action], type: 'point', groupId: cid, start: event[:timestamp], ext_code: event[:ext_code], statuses: get_status_event(event) } } } } +    # container_events
-      services.keys.flat_map { |svc_name| services[svc_name][:events].flat_map {|event| { id: svc_name, content: event[:action], ext_code: event[:ext_code], type: 'point', groupId: svc_name, start: event[:timestamp], ext_code: event[:ext_code], statuses: get_status_event(event) } } } +    # service_events
+      services.keys.flat_map { |svc_name| services[svc_name][:events].flat_map {|event| { id: svc_name, content: event[:action], ext_code: event[:ext_code], type: 'point', groupId: svc_name, start: event[:timestamp], statuses: get_status_event(event) } } } +    # service_events
       services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| { id: cid, content: "Container", type: 'range', groupId: cid, start: cont[:start].nil? ? default_start_time : cont[:start] , end: cont[:end].nil? ? default_end_time : cont[:end], statuses: get_status_cont(cont[:start], cont[:end], cont[:latest_start]) } } }   # containers
   }
   results

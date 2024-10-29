@@ -4,29 +4,31 @@ require 'json'
 
 CONTAINER_START_ACTIONS = %w[create exec_create exec_start start]
 
-CONTAINER_STOP_ACTIONS = %w[destroy die exec_die kill stop]
+CONTAINER_STOP_ACTIONS = %w[destroy die kill stop]
 
 HEALTH_CHECK_EVENTS = %w[exec_start exec_create exec_die]
 
 TRACKED_CONTAINER_EVENTS = CONTAINER_START_ACTIONS + CONTAINER_STOP_ACTIONS + HEALTH_CHECK_EVENTS
 
-TRACKED_SERVICE_EVENTS = %w[create remove update]
-
 QUERY_FOR_CONTAINER_EVENTS = '{job="docker_events"} | json | Type = "container" and Action =~ "' + TRACKED_CONTAINER_EVENTS.join('|') + '"'
-QUERY_FOR_SERVICE_EVENTS = '{job="docker_events"} | json | Type = "service" and Action =~ "' + TRACKED_SERVICE_EVENTS.join('|') + '"'
-COMBINED_QUERY = '{job="docker_events"} | json | ((Type = "container" and Action =~ "' +
-  TRACKED_CONTAINER_EVENTS.join('|') + '") or (Type = "service" and Action =~ "' +
-  TRACKED_SERVICE_EVENTS.join('|') + '"))'
+
 
 BASE_LOKI_URL = ENV.fetch('BASE_LOKI_URL', 'http://loki:3100/loki/api/v1')
 
-def get_status_health_check(health_check)
-  nil
+def get_status_health_check(hc)
+  statuses = []
+  if hc[:hc_ext_code].nil?
+    statuses << 'neutral'
+  elsif hc[:hc_ext_code] == 0
+    statuses << 'ok'
+  else
+    statuses << 'error'
+  end
 end
 
 def get_status_cont(start, end_val, latest_start)
   statuses = []
-  if end_val.nil? || latest_start.nil? || end_val < latest_start
+  if end_val.nil? || (!latest_start.nil? && end_val < latest_start)
     statuses << 'ok'
   else
     statuses << 'neutral'
@@ -82,7 +84,7 @@ def get_health_checks(data)
     cid = rec[:Actor][:ID]
     action = rec[:Action]
     timestamp = rec[:time]
-    ext_code = rec[:Actor][:Attributes][:exitCode]
+    hc_ext_code = rec[:Actor][:Attributes][:exitCode]
     hc_id = rec[:Actor][:Attributes][:execID]
     services[svc_name] ||= { containers: {} }
     services[svc_name][:containers][cid] ||= { start: nil, end: nil, latest_start: nil, health_checks: {} }
@@ -90,23 +92,17 @@ def get_health_checks(data)
     services[svc_name][:containers][cid][:latest_start] = timestamp if (CONTAINER_START_ACTIONS.include? action) && ((services[svc_name][:containers][cid][:latest_start] == nil) || (services[svc_name][:containers][cid][:latest_start] < timestamp))
     services[svc_name][:containers][cid][:end] = timestamp if (CONTAINER_STOP_ACTIONS.include? action) && ((services[svc_name][:containers][cid][:end] == nil) || (services[svc_name][:containers][cid][:end] < timestamp))
     if HEALTH_CHECK_EVENTS.any? { |event| action.include?(event)}
-      services[svc_name][:containers][cid][:health_checks][hc_id] ||= { hc_id: hc_id, start_hc: nil, end_hc: nil, ext_code: nil }
+      services[svc_name][:containers][cid][:health_checks][hc_id] ||= { hc_id: hc_id, start_hc: nil, end_hc: nil, hc_ext_code: nil }
       services[svc_name][:containers][cid][:health_checks][hc_id][:start_hc] = timestamp if services[svc_name][:containers][cid][:health_checks][hc_id][:start_hc].nil? || timestamp < services[svc_name][:containers][cid][:health_checks][hc_id][:start_hc]
       services[svc_name][:containers][cid][:health_checks][hc_id][:end_hc] = timestamp if services[svc_name][:containers][cid][:health_checks][hc_id][:end_hc].nil? || timestamp < services[svc_name][:containers][cid][:health_checks][hc_id][:end_hc]
-      services[svc_name][:containers][cid][:health_checks][hc_id][:ext_code] = ext_code if !ext_code.nil? && services[svc_name][:containers][cid][:health_checks][hc_id][:ext_code].nil? && action.include?('exec_die')
+      services[svc_name][:containers][cid][:health_checks][hc_id][:hc_ext_code] = hc_ext_code if !hc_ext_code.nil? && services[svc_name][:containers][cid][:health_checks][hc_id][:hc_ext_code].nil? && action.include?('exec_die')
     end
   end
-  # collected_values = services.keys.flat_map { |svc_name| services[svc_name][:containers].keys.map { |cid| { id: cid, name: cid, type: 'container'} } }
-  # serviceev_items = services.keys.flat_map { |svc_name| services[svc_name][:events].map {|event| {id: svc_name, content: event[:action], ext_code: event[:ext_code], type: 'point', groupId: svc_name, start: event[:timestamp]}}}
-  # containerev_items = services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| cont[:events].map {|event| {id: cid + event[:action] + event[:timestamp].to_s, content: event[:action], type: 'point', groupId: cid, start: event[:timestamp] } } } }
-  # container_items = services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| { id: cid, content: "Container " + cid, type: 'range', groupId: cid, start: cont[:start], end: cont[:end] } } }
   results = {
     groups: services.map { |n, v| { id: n, name: n, type: 'service', containers: v[:containers].keys } }  +
       services.keys.flat_map { |svc_name| services[svc_name][:containers].keys.flat_map { |cid| { id: cid, name: cid, type: 'container' } } },
-    items: services.keys.flat_map { |svc_name| services[svc_name][:containers].flat_map {|cid, cont| cont[:events].map {|event| { id: cid + " " + event[:action] + " " + event[:timestamp].to_s, content: event[:action], type: 'point', groupId: cid, start: event[:timestamp], ext_code: event[:ext_code], statuses: get_status_event(event) } } } } +    # container_events
-      services.keys.flat_map { |svc_name| services[svc_name][:events].flat_map {|event| { id: svc_name, content: event[:action], ext_code: event[:ext_code], type: 'point', groupId: svc_name, start: event[:timestamp], ext_code: event[:ext_code], statuses: get_status_event(event) } } } +    # service_events
-      services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| { id: cid, content: "Container", type: 'range', groupId: cid, start: cont[:start].nil? ? default_start_time : cont[:start] , end: cont[:end].nil? ? default_end_time : cont[:end], statuses: get_status_cont(cont[:start], cont[:end], cont[:latest_start]) } } }   # containers
+    items: services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| { id: cid, content: "Container", type: 'range', groupId: cid, start: cont[:start].nil? ? default_start_time : cont[:start] , end: cont[:end].nil? ? default_end_time : cont[:end], statuses: get_status_cont(cont[:start], cont[:end], cont[:latest_start]) } } } +  # Health checks
+      services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| cont[:health_checks].flat_map { |hc_id, hc| { id: hc_id, content: "Health check", type: 'range', groupId: cid, start: hc[:start_hc].nil? ? hc[:end_hc] : hc[:start_hc], end: hc[:end_hc].nil? ? hc[:start_hc] : hc[:end_hc], statuses: get_status_health_check(hc) } } } }   # containers
   }
   results
 end
-# Iterating through all service keys, for each key get [:containers].keys, iterating through them and extract dict with {field: val, field2 :val2} end collect this dicts with values into one array
