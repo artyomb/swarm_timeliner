@@ -13,22 +13,30 @@ document.addEventListener('DOMContentLoaded', () => {
 
             const data = await response.json(); // Parse JSON data
 
-            const groups = new vis.DataSet(data.groups.map(group => ({
-                id: group.id, // Unique ID for each group (service or container)
-                content: group.name, // Display name for the group
-                nestedGroups: group.containers || [], // Use nested groups for containers under services
-                className: group.type === 'service' ? 'service-group' : 'container-group' // Add classes for styling
-            })));
+            const groups = new vis.DataSet(data.groups.map(group => {
+                const title_for_group = group.type === 'service' ? `Group ${group.id} with containers: ${group.containers ? group.containers.join(', ') : 'none'}` : `Container with id = ${group.id}`;
+                return {
+                    id: group.id, // Unique ID for each group (service or container)
+                    content: group.type === 'service' ? `Service ${group.id}` : 'Service container with events', // Display name for the group
+                    nestedGroups: group.containers || null, // Use nested groups for containers under services
+                    title: title_for_group, // Title for the group
+                    className: group.type === 'service' ? 'service-group' : 'container-group' // Add classes for styling
+                }
+            }));
             const items = new vis.DataSet(data.items.map(item => {
                 // Set 'group' to the container or service it belongs to
+                const typeClass = item.type === 'point' ? 'event-point' : 'container-event';
+                const statusClasses = Array.isArray(item.statuses) && item.statuses.length ? item.statuses.join(' ') : '';
+                const className = `${typeClass} ${statusClasses}`.trim();
                 return {
                     ...item,
+                    content: item.content.length > 6 ? item.content.substring(0, 6) + '...' : item.content,
                     group: item.groupId, // Associate item with a group ID (container or service)
                     start: new Date(item.start * 1000),
                     end: item.type === 'range' ? new Date(item.end * 1000) : null,
                     type: item.type === 'point' ? 'point' : 'range',
-                    title: `Event Details: ${item.content}`,
-                    className: item.type === 'point' ? 'event-point' : 'container-event',
+                    title: `Item details: ${item.content} with id = ${item.id}`,
+                    className: className,
                     backend_init: item.type === 'range' ? {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json'},

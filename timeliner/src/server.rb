@@ -29,6 +29,11 @@ class Timeliner < Sinatra::Base
   ajax_call :post, '/get_cont_logs' do |data|
     get_container_logs(data[:cont_id])
   end
+
+  # ajax_call :post, '/get_health_checks' do |data|
+  #   get_health_checks(data)
+  # end
+
   get '/healthcheck', &-> { 'OK' } # LOGGER.debug :healthcheck
 
   error do

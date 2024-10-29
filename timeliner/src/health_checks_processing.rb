@@ -1,0 +1,1 @@
+# Here will be endpoint function for health_checks_processing

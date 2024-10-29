@@ -6,6 +6,30 @@ sass:
     width: 100%
   .container-event
     cursor: pointer
+  .neutral
+    background-color: gray
+    --status-color: gray
+  .ok
+    background-color: green
+    --status-color: green
+  .error
+    background-color: red
+    --status-color: red
+
+  .start_unknown // Gradient for unknown start items
+    background: linear-gradient(to left, var(--status-color), white)
+
+  .event-point.ok
+    background-color: green
+    border-color: green
+
+  .event-point.error
+    background-color: red
+    border-color: red
+
+  .event-point.neutral
+    background-color: gray
+    border-color: gray
 
 html lang="en"
   head
@@ -21,9 +45,11 @@ html lang="en"
     #controls
       label for="timeSelect" Select time period:
       select#timeSelect
+        option value="1m" Last minute
         option value="5m" Last 5 minutes
         option value="30m" Last 30 minutes
         option value="1h" Last hour
+        option value="6h" Last 6 hours
         option value="12h" Last 12 hours
         option value="1d" Last day
         option value="all" selected="selected" All
