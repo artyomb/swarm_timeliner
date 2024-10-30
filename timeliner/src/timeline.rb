@@ -102,14 +102,16 @@ def get_timeline_data(data)
       services[svc_name][:containers][cid][:end] = timestamp if ((CONTAINER_STOP_ACTIONS.include? action) && ((services[svc_name][:containers][cid][:end] == nil) || (services[svc_name][:containers][cid][:end] < timestamp)))
     end
     if rec[:Type] == 'service'
+      puts "svc_name: #{svc_name}, action: #{action}, timestamp: #{timestamp}"
       services[svc_name][:events] << { action: action, timestamp: timestamp, ext_code: ext_code }
     end
   end
+  puts "services events registered in dict = #{services.keys.flat_map { |svc_name| services[svc_name][:events].flat_map {|event| { id: svc_name, content: event[:action], ext_code: event[:ext_code], type: 'point', groupId: svc_name, start: event[:timestamp], statuses: get_status_event(event) } } }}"
   results = {
     groups: services.map { |n, v| { id: n, name: n, type: 'service', containers: v[:containers].keys } }  +
       services.keys.flat_map { |svc_name| services[svc_name][:containers].keys.flat_map { |cid| { id: cid, name: cid, type: 'container' } } },
     items: services.keys.flat_map { |svc_name| services[svc_name][:containers].flat_map {|cid, cont| cont[:events].map {|event| { id: cid + " " + event[:action] + " " + event[:timestamp].to_s, content: event[:action], type: 'point', groupId: cid, start: event[:timestamp], ext_code: event[:ext_code], statuses: get_status_event(event) } } } } +    # container_events
-      services.keys.flat_map { |svc_name| services[svc_name][:events].flat_map {|event| { id: svc_name, content: event[:action], ext_code: event[:ext_code], type: 'point', groupId: svc_name, start: event[:timestamp], statuses: get_status_event(event) } } } +    # service_events
+      services.keys.flat_map { |svc_name| services[svc_name][:events].flat_map {|event| { id: svc_name + " " + event[:action] + " " + event[:timestamp].to_s, content: event[:action], ext_code: event[:ext_code], type: 'point', groupId: svc_name, start: event[:timestamp], statuses: get_status_event(event) } } } +    # service_events
       services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| { id: cid, content: "Container", type: 'range', myType: 'canBeExploredById', groupId: cid, start: cont[:start].nil? ? default_start_time : cont[:start] , end: cont[:end].nil? ? default_end_time : cont[:end], statuses: get_status_cont(cont[:start], cont[:end], cont[:latest_start]) } } }   # containers
   }
   results
