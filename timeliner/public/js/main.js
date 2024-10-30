@@ -5,7 +5,8 @@ document.addEventListener('DOMContentLoaded', () => {
             let logsLimitValue = document.getElementById('logsLimit').value;
             logsLimitValue = /^[0-9]+$/.test(logsLimitValue) ? parseInt(logsLimitValue, 10) : null;
             console.log("Logs value is " + logsLimitValue.toString());
-            const checkBoxValue = document.getElementById('healthChecks_CheckBox').value;
+            const checkBoxValue = document.getElementById('healthChecks_CheckBox').checked;
+            console.log("Check box value is " + checkBoxValue);
             const response = await fetch(backend_path, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json'},
@@ -120,8 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     const healthChecks_CheckBox = document.getElementById('healthChecks_CheckBox');
     healthChecks_CheckBox.addEventListener('change', () => {
-         loadTimelineData('/get_health_checks');
-         console.log('healthChecks_CheckBox changed');
+         loadTimelineData('/timeline_data');
     });
     loadTimelineData('/timeline_data');
 });

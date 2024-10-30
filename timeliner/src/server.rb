@@ -5,7 +5,6 @@ require 'rack/sassc'
 require_relative 'ajax'
 require_relative 'timeline.rb'
 require_relative 'cont_logs.rb'
-require_relative 'health_checks_processing.rb'
 
 # require 'sinatra/reloader'  if `hostname` =~ /yoga/i && !ENV["COMPILED"]
 
