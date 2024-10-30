@@ -85,10 +85,12 @@ def get_timeline_data(data)
   end
 
   data = JSON.parse response.body, symbolize_names: true
-  data = data[:data][:result].map { JSON.parse _1[:values][0][1], symbolize_names: true }
+  data = data[:data][:result]
   services = {}
-  data.each do |rec|
-    svc_name = rec[:Actor][:Attributes][:'com.docker.swarm.service.name'] || 'default_service'
+  data.each do |data_rec|
+    rec = JSON.parse data_rec[:values][0][1], symbolize_names: true
+    event_type = data_rec[:stream][:Type]
+    svc_name = event_type == "container" ? rec[:Actor][:Attributes][:'com.docker.swarm.service.name'] : (event_type == "service" ? data_rec[:stream][:Actor_Attributes_name] : "default_service")
     cid = rec[:Actor][:ID]
     action = rec[:Action]
     timestamp = rec[:time]
