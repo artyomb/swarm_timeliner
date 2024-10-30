@@ -5,10 +5,11 @@ document.addEventListener('DOMContentLoaded', () => {
             let logsLimitValue = document.getElementById('logsLimit').value;
             logsLimitValue = /^[0-9]+$/.test(logsLimitValue) ? parseInt(logsLimitValue, 10) : null;
             console.log("Logs value is " + logsLimitValue.toString());
+            const checkBoxValue = document.getElementById('healthChecks_CheckBox').value;
             const response = await fetch(backend_path, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json'},
-                body: JSON.stringify({ since: timeSelectValue, limit: logsLimitValue}),
+                body: JSON.stringify({ since: timeSelectValue, limit: logsLimitValue, collect_health_checks: checkBoxValue} ),
             });
 
             const data = await response.json(); // Parse JSON data
@@ -24,26 +25,25 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             }));
             const items = new vis.DataSet(data.items.map(item => {
-                const typeClass = item.type === 'point' ? 'event-point' : 'container-event';
-                const statusClasses = Array.isArray(item.statuses) && item.statuses.length ? item.statuses.join(' ') : '';
+                let typeClass = item.type === 'point' ? 'event-point' : '';
+                typeClass += item.myType === 'canBeExploredById' ? ' clickable' : '';
+                const statusClasses = typeof item.statuses === 'string' ? item.statuses : (Array.isArray(item.statuses) && item.statuses.length ? item.statuses.join(' ') : '');
                 const className = `${typeClass} ${statusClasses}`.trim();
                 return {
                     ...item,
                     content: item.content.length > 9 ? item.content.substring(0, 6) + '...' : item.content,
                     group: item.groupId, // Associate item with a group ID (container or service)
                     start: new Date(item.start * 1000),
-                    end: item.type === 'range' ? new Date(item.end * 1000) : null,
-                    type: item.type === 'point' ? 'point' : 'range',
-                    title: `Item details: ${item.content} with id = ${item.id}`,
+                    end: item.type !== 'point' ? new Date(item.end * 1000) : null,
+                    title: `Item details: ${item.content} with id = ${item.id}\n Start time = ${this.start} End time ${this.end}`,
                     className: className,
-                    backend_init: item.type === 'range' ? {
+                    backend_init: item.myType === 'canBeExploredById' ? {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json'},
                         body: JSON.stringify({ cont_id: item.id}),
                     } : null
                 };
-            }));
-            // Specify options for the timeline
+            }));            // Specify options for the timeline
             const options = {
                 stack: false, // Prevent stacking to keep items aligned with groups
                 orientation: 'top',
@@ -118,9 +118,10 @@ document.addEventListener('DOMContentLoaded', () => {
     refreshButton.addEventListener('click', () => {
         loadTimelineData('/timeline_data');
     });
-    const healthChecksButton = document.getElementById('healthChecksButton');
-    healthChecksButton.addEventListener('click', () => {
-        loadTimelineData('/get_health_checks');
+    const healthChecks_CheckBox = document.getElementById('healthChecks_CheckBox');
+    healthChecks_CheckBox.addEventListener('change', () => {
+         loadTimelineData('/get_health_checks');
+         console.log('healthChecks_CheckBox changed');
     });
     loadTimelineData('/timeline_data');
 });
