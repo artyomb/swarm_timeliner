@@ -34,6 +34,10 @@ class LokiClient
     @logger = @options[:logger]
   end
 
+  def update_limit(new_limit)
+    @options[:limit] = new_limit
+  end
+
   def query_range(query, start_time, end_time)
     start_nano = start_time.to_nano
     end_nano = end_time.to_nano
@@ -70,7 +74,7 @@ class LokiClient
       query: query,
       start: start_time,
       end: end_time,
-      limit: @options[:limit]
+      limit: @options[:limit] == -1 ? nil : @options[:limit],
     )
   end
 
@@ -84,17 +88,11 @@ class LokiClient
   end
 
   def process_successful_response(response)
-    data = JSON.parse(response.body)
-    results = data.dig('data', 'result') || []
+    data = JSON.parse response.body, symbolize_names: true
 
+    results = data.dig('data', 'result') || []
     results.flat_map do |result|
-      result.fetch('values', []).map do |timestamp, value|
-        {
-          stream: result['stream'],
-          timestamp: Time.at(timestamp.to_i / 1_000_000_000),
-          value: value
-        }
-      end
+      result
     end
   end
 
@@ -108,22 +106,4 @@ class LokiClient
       false
     end
   end
-end
-
-# Usage:
-begin
-  client = LokiClient.new('loki.example.com', logger: Logger.new($stdout))
-
-  logs = client.query_range(
-    '{job="nginx"}',
-    Time.new(2022, 11, 30, 12, 0),
-    Time.new(2022, 11, 30, 13, 0)
-  )
-
-  logs.lazy
-      .select { |log| log[:value].include?('error') }
-      .take(100)
-      .each { |log| puts "#{log[:timestamp]} - #{log[:value]}" }
-rescue LokiClient::Error => e
-  puts "Error: #{e.message}"
 end

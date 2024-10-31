@@ -4,9 +4,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const timeSelectValue = document.getElementById('timeSelect').value;
             let logsLimitValue = document.getElementById('logsLimit').value;
             logsLimitValue = /^[0-9]+$/.test(logsLimitValue) ? parseInt(logsLimitValue, 10) : null;
-            console.log("Logs value is " + logsLimitValue.toString());
             const checkBoxValue = document.getElementById('healthChecks_CheckBox').checked;
-            console.log("Check box value is " + checkBoxValue);
             const response = await fetch(backend_path, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json'},
@@ -30,13 +28,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 typeClass += item.myType === 'canBeExploredById' ? ' clickable' : '';
                 const statusClasses = typeof item.statuses === 'string' ? item.statuses : (Array.isArray(item.statuses) && item.statuses.length ? item.statuses.join(' ') : '');
                 const className = `${typeClass} ${statusClasses}`.trim();
+                const time_start = new Date(item.start * 1000);
+                const exit_code_str = item.ext_code ? `Exit code: ${item.ext_code}` : '';
+                const time_end = item.type !== 'point' ? new Date(item.end * 1000) : null;
                 return {
                     ...item,
                     content: item.content.length > 9 ? item.content.substring(0, 6) + '...' : item.content,
                     group: item.groupId, // Associate item with a group ID (container or service)
-                    start: new Date(item.start * 1000),
-                    end: item.type !== 'point' ? new Date(item.end * 1000) : null,
-                    title: `Item details: ${item.content} with id = ${item.id}\n Start time = ${this.start} End time ${this.end}`,
+                    start: time_start,
+                    end: time_end,
+                    title: `Item details: ${item.content} with id = ${item.id}<br>Start time = ${time_start} End time ${time_end} ${exit_code_str}`,
                     className: className,
                     backend_init: item.myType === 'canBeExploredById' ? {
                         method: 'POST',
