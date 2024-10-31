@@ -2,7 +2,7 @@ def get_status_health_check(hc)
   statuses = []
   if hc[:hc_ext_code].nil?
     statuses << 'neutral'
-  elsif hc[:hc_ext_code] == 0
+  elsif hc[:hc_ext_code] == '0'
     statuses << 'ok'
   else
     statuses << 'error'

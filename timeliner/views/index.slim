@@ -52,11 +52,12 @@ html lang="en"
         option value="1m" Last minute
         option value="5m" Last 5 minutes
         option value="30m" Last 30 minutes
-        option value="1h" Last hour
+        option value="1h" selected="selected" Last hour
         option value="6h" Last 6 hours
         option value="12h" Last 12 hours
         option value="1d" Last day
-        option value="all" selected="selected" All
+        option value="all" All
+      label#itemsShown  Items shown:
     label for="logsLimit" Limit:
     input#logsLimit type="text" value="500" pattern="^[0-9]*$" title="Enter a positive integer or '-' for no limit"
     button#refreshButton Refresh TL

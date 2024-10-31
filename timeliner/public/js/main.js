@@ -29,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const statusClasses = typeof item.statuses === 'string' ? item.statuses : (Array.isArray(item.statuses) && item.statuses.length ? item.statuses.join(' ') : '');
                 const className = `${typeClass} ${statusClasses}`.trim();
                 const time_start = new Date(item.start * 1000);
-                const exit_code_str = item.ext_code ? `Exit code: ${item.ext_code}` : '';
+                const exit_code_str = item.ext_code != null ? `Exit code: ${item.ext_code}` : '';
                 const time_end = item.type !== 'point' ? new Date(item.end * 1000) : null;
                 return {
                     ...item,
@@ -46,6 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     } : null
                 };
             }));            // Specify options for the timeline
+            document.getElementById('itemsShown').innerText = (` Items shown: ${items.length}`);
             const options = {
                 stack: false, // Prevent stacking to keep items aligned with groups
                 orientation: 'top',
