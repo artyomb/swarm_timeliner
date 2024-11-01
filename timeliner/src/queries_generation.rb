@@ -1,8 +1,9 @@
 class QueriesGenerator
   # ' and Action !~ "exec.*"'
-  Default_container_tracked_actions = %w[attach commit copy create destroy detach die
+  Default_container_tracked_actions = %w[attach commit copy create detach die
                               exec_detach export health_status kill
                               oom pause rename resize restart start stop top unpause update]
+  # For now 'destroy' is not tracked
 
   Hc_events = %w[exec_start exec_create exec_die]
 

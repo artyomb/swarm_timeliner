@@ -22,15 +22,10 @@ LOKI_BATCH_SIZE = ENV.fetch('LOKI_BATCH_SIZE', 1000).to_i
 LOKI_CLIENT = LokiClient.new(BASE_LOKI_HOST, port: BASE_LOKI_PORT, **{limit: LOKI_BATCH_SIZE, logger: Logger.new($stdout)})
 QUERY_GENERATOR = QueriesGenerator.new(ENV.fetch('TARGET_"JOB', 'docker_events'))
 
-DEBUG = ENV['DEBUG_MODE'] == 'true'
-
-if DEBUG
-  puts "Running in debug mode"
-end
-
 def get_timeline_data(data)
   since = data[:since]
   collect_health_checks = data[:collect_health_checks]
+  load_source_jsons = data[:load_source_jsons]
   default_end_time = Time.now.to_i
   default_start_time = begin
                         value, unit = since.match(/^(\d+)?([mhd]|all)$/)&.captures || [nil, nil]
@@ -65,17 +60,17 @@ def get_timeline_data(data)
     if rec[:Type] == 'container'
       services[svc_name][:containers][cid] ||= { start: nil, end: nil, latest_start: nil, events: [], health_checks: {} }
       if collect_health_checks && HEALTH_CHECK_EVENTS.any? { |event| action.include?(event)}
-        services[svc_name][:containers][cid][:health_checks][hc_id] ||= !DEBUG ? { hc_id: hc_id, start_hc: nil, end_hc: nil, hc_ext_code: nil } : { hc_id: hc_id, start_hc: nil, end_hc: nil, hc_ext_code: nil, src_jsons: []}
+        services[svc_name][:containers][cid][:health_checks][hc_id] ||= !load_source_jsons ? { hc_id: hc_id, start_hc: nil, end_hc: nil, hc_ext_code: nil } : { hc_id: hc_id, start_hc: nil, end_hc: nil, hc_ext_code: nil, src_jsons: []}
         services[svc_name][:containers][cid][:health_checks][hc_id][:start_hc] = timestamp if services[svc_name][:containers][cid][:health_checks][hc_id][:start_hc].nil? || timestamp < services[svc_name][:containers][cid][:health_checks][hc_id][:start_hc]
         services[svc_name][:containers][cid][:health_checks][hc_id][:end_hc] = timestamp if services[svc_name][:containers][cid][:health_checks][hc_id][:end_hc].nil? || timestamp < services[svc_name][:containers][cid][:health_checks][hc_id][:end_hc]
         services[svc_name][:containers][cid][:health_checks][hc_id][:hc_ext_code] = hc_ext_code if !hc_ext_code.nil? && services[svc_name][:containers][cid][:health_checks][hc_id][:hc_ext_code].nil? && action.include?('exec_die')
-        if DEBUG
+        if load_source_jsons
           services[svc_name][:containers][cid][:health_checks][hc_id][:src_jsons] << data_rec
         end
       else
         services[svc_name][:containers][cid] ||= { start: nil, end: nil, latest_start: nil, events: [] }
         new_event = { action: action, timestamp: timestamp, ext_code: ext_code }
-        if DEBUG
+        if load_source_jsons
           new_event[:src_jsons] = [data_rec]
         end
         services[svc_name][:containers][cid][:events] << new_event
@@ -85,7 +80,7 @@ def get_timeline_data(data)
       end
     elsif rec[:Type] == 'service'
       existing_event = services[svc_name][:events].find { |e| e[:action] == action && e[:timestamp] == timestamp }
-      services[svc_name][:events] << (!DEBUG ? { action: action, timestamp: timestamp, ext_code: ext_code} : { action: action, timestamp: timestamp, ext_code: ext_code, src_jsons: [data_rec]}) unless existing_event
+      services[svc_name][:events] << (!load_source_jsons ? { action: action, timestamp: timestamp, ext_code: ext_code} : { action: action, timestamp: timestamp, ext_code: ext_code, src_jsons: [data_rec]}) unless existing_event
     end
   end
   results = {

@@ -4,10 +4,11 @@ document.addEventListener('DOMContentLoaded', () => {
             document.getElementById('itemsShown').innerHTML = `Items shown: <span class="loading-dots">loading<span>.</span><span>.</span><span>.</span></span>`;
             const timeSelectValue = document.getElementById('timeSelect').value;
             const checkBoxValue = document.getElementById('healthChecks_CheckBox').checked;
+            const load_source_jsons_checkbox_value = document.getElementById('load_source_jsons_checkbox').checked;
             const response = await fetch(backend_path, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json'},
-                body: JSON.stringify({ since: timeSelectValue, collect_health_checks: checkBoxValue} ),
+                body: JSON.stringify({ since: timeSelectValue, collect_health_checks: checkBoxValue, load_source_jsons: load_source_jsons_checkbox_value} ),
             });
 
             const data = await response.json(); // Parse JSON data
@@ -25,7 +26,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const items = new vis.DataSet(data.items.map(item => {
                 let typeClass = item.type === 'point' ? 'event-point' : '';
                 typeClass += item.myType === 'canBeExploredById' ? ' clickable' : '';
-                if (item.src_jsons && !typeClass.includes('clickable')) typeClass += ' clickable';
+                if (item.src_jsons && item.src_jsons !== null && item.src_jsons !== "null" && !typeClass.includes('clickable')) typeClass += ' clickable';
                 const statusClasses = typeof item.statuses === 'string' ? item.statuses : (Array.isArray(item.statuses) && item.statuses.length ? item.statuses.join(' ') : '');
                 const className = `${typeClass} ${statusClasses}`.trim();
                 const time_start = new Date(item.start * 1000);
@@ -44,7 +45,6 @@ document.addEventListener('DOMContentLoaded', () => {
                         headers: { 'Content-Type': 'application/json'},
                         body: JSON.stringify({ cont_id: item.id}),
                     } : null,
-                    src_jsons: item.src_jsons
                 };
             }));            // Specify options for the timeline
             document.getElementById('itemsShown').innerText = (` Items shown: ${items.length}`);
@@ -93,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         </head>
                                         <body>
                                             <h1>Response Data</h1>
-                                            <pre>${JSON.stringify(json_data, null,2)}</pre>
+                                            <pre>${json_data.message}</pre>
                                         </body>
                                     </html>
                                 `);
@@ -106,7 +106,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             alert("An error occurred while fetching data. Check the console for details.");
                         }
                     }
-                    if (selectedItem.src_jsons) {
+                    if (selectedItem.src_jsons && selectedItem.src_jsons !== null && selectedItem.src_jsons !== "null") {
                         try {
                             const newTab = window.open('', '_blank');
                             if (newTab) {
