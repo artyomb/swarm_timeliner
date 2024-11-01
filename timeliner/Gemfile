@@ -4,6 +4,7 @@ ruby File.read(File.dirname(__FILE__)+'/.ruby-version').strip
 gem 'async-io'
 gem 'json'
 gem 'falcon'
+gem 'mutex_m'
 
 # gem 'rack', '~> 2.2.8'
 # gem 'rackup', '~> 2.1'

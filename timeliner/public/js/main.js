@@ -2,13 +2,11 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadTimelineData(backend_path='/timeline_data') {
         try {
             const timeSelectValue = document.getElementById('timeSelect').value;
-            let logsLimitValue = document.getElementById('logsLimit').value;
-            logsLimitValue = /^[0-9]+$/.test(logsLimitValue) ? parseInt(logsLimitValue, 10) : null;
             const checkBoxValue = document.getElementById('healthChecks_CheckBox').checked;
             const response = await fetch(backend_path, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json'},
-                body: JSON.stringify({ since: timeSelectValue, limit: logsLimitValue, collect_health_checks: checkBoxValue} ),
+                body: JSON.stringify({ since: timeSelectValue, collect_health_checks: checkBoxValue} ),
             });
 
             const data = await response.json(); // Parse JSON data
@@ -119,11 +117,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const refreshButton = document.getElementById('refreshButton');
     refreshButton.addEventListener('click', () => {
+        document.getElementById('itemsShown').innerHTML = `Items shown: <span class="loading-dots">loading<span>.</span><span>.</span><span>.</span></span>
+            <style>
+                .loading-dots span {
+                    animation: dots 1.5s infinite;
+                    opacity: 0;
+                    display: inline-block;
+                }
+                .loading-dots span:nth-child(1) { animation-delay: 0.0s; }
+                .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+                .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+                @keyframes dots {
+                    0% { opacity: 0; }
+                    50% { opacity: 1; }
+                    100% { opacity: 0; }
+                }
+            </style>`;
         loadTimelineData('/timeline_data');
     });
     const healthChecks_CheckBox = document.getElementById('healthChecks_CheckBox');
     healthChecks_CheckBox.addEventListener('change', () => {
-         loadTimelineData('/timeline_data');
+         // loadTimelineData('/timeline_data');
+
     });
     loadTimelineData('/timeline_data');
 });

@@ -15,16 +15,15 @@ IGNORE_HEALTH_CHECK_EVENTS = '{job="docker_events"} | json | Type = "container" 
 BASE_LOKI_HOST = ENV.fetch('BASE_LOKI_HOST', 'loki')
 BASE_LOKI_PORT = ENV.fetch('BASE_LOKI_PORT', '3100').to_i
 
-BASE_LOKI_URL = ENV.fetch('BASE_LOKI_URL', 'http://loki:3100/loki/api/v1')
+# BASE_LOKI_URL = ENV.fetch('BASE_LOKI_URL', 'http://loki:3100/loki/api/v1')
 
-# LOKI_CLIENT = LokiClient.new(BASE_LOKI_HOST, port: BASE_LOKI_PORT, **{logger: Logger.new($stdout)})
+LOKI_BATCH_SIZE = ENV.fetch('LOKI_BATCH_SIZE', 1000).to_i
+
+LOKI_CLIENT = LokiClient.new(BASE_LOKI_HOST, port: BASE_LOKI_PORT, **{limit: LOKI_BATCH_SIZE, logger: Logger.new($stdout)})
 QUERY_GENERATOR = QueriesGenerator.new(ENV.fetch('TARGET_"JOB', 'docker_events'))
 
 
 def get_timeline_data(data)
-  limit = Integer(data[:limit]) rescue -1
-  limit = -1 if limit <= 0
-  # LOKI_CLIENT.update_limit(limit)
   since = data[:since]
   collect_health_checks = data[:collect_health_checks]
   default_end_time = Time.now.to_i
@@ -45,22 +44,10 @@ def get_timeline_data(data)
                         end
                        end
   query = QUERY_GENERATOR.generate_query(collect_health_checks)
-  # data = LOKI_CLIENT.query_range(query, Time.at(default_start_time), Time.at(default_end_time))
-  uri = URI("#{BASE_LOKI_URL}/query_range")
-  params = { query: query }
-  params[:limit] = limit if limit > 0
-  params[:since] = since == 'all' ? '30d1h' : since
-  uri.query = URI.encode_www_form(params)
-  response = Net::HTTP.get_response(uri)
-  if response.code.to_i != 200
-    puts 'Failed to get response from Loki'
-    raise response.body
-  end
-  data = JSON.parse response.body, symbolize_names: true
-  data = data[:data][:result]
+  data = LOKI_CLIENT.query_range(query, Time.at(default_start_time), Time.at(default_end_time))
   services = {}
   data.each do |data_rec|
-    rec = JSON.parse data_rec[:values][0][1], symbolize_names: true
+    rec = data_rec[:values]
     event_type = data_rec[:stream][:Type]
     svc_name = event_type == "container" ? rec[:Actor][:Attributes][:'com.docker.swarm.service.name'] : (event_type == "service" ? data_rec[:stream][:Actor_Attributes_name] : "default_service")
     cid = rec[:Actor][:ID]
@@ -84,8 +71,7 @@ def get_timeline_data(data)
         services[svc_name][:containers][cid][:latest_start] = timestamp if ((CONTAINER_START_ACTIONS.include? action) && ((services[svc_name][:containers][cid][:latest_start] == nil) || (services[svc_name][:containers][cid][:latest_start] < timestamp)))
         services[svc_name][:containers][cid][:end] = timestamp if ((CONTAINER_STOP_ACTIONS.include? action) && ((services[svc_name][:containers][cid][:end] == nil) || (services[svc_name][:containers][cid][:end] < timestamp)))
       end
-    end
-    if rec[:Type] == 'service'
+    elsif rec[:Type] == 'service'
       existing_event = services[svc_name][:events].find { |e| e[:action] == action && e[:timestamp] == timestamp }
       services[svc_name][:events] << { action: action, timestamp: timestamp, ext_code: ext_code } unless existing_event
     end

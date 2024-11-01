@@ -20,10 +20,11 @@ class LokiClient
   DEFAULT_OPTIONS = {
     limit: 10_000,
     retries: 3,
-    timeout: 10,
-    batch_size: 1_000,
+    timeout: 30,
     logger: Logger.new($stdout)
   }.freeze
+
+  attr_accessor :options
 
   def initialize(host, port: 3100, **options)
     @options = DEFAULT_OPTIONS.merge(options)
@@ -34,34 +35,28 @@ class LokiClient
     @logger = @options[:logger]
   end
 
-  def update_limit(new_limit)
-    @options[:limit] = new_limit
-  end
-
   def query_range(query, start_time, end_time)
     start_nano = start_time.to_nano
     end_nano = end_time.to_nano
 
     Enumerator.new do |yielder|
-      current = start_nano
-      while current < end_nano
-        fetch_chunk(query, current, end_nano).each do |entry|
+      current = end_nano
+      while current > start_nano
+        current = fetch_chunk query, start_nano, current do |entry|
           yielder << entry
         end
-        break if current == end_nano
       end
     end
   end
-
   private
 
-  def fetch_chunk(query, start_time, end_time)
+  def fetch_chunk(query, start_time, end_time, &block)
     retries = 0
     params = build_params(query, start_time, end_time)
 
     begin
       response = @http.get("/loki/api/v1/query_range?#{params}")
-      handle_response(response)
+      handle_response response, &block
     rescue StandardError => e
       retries += 1
       retry if retries <= @options[:retries] && should_retry?(e)
@@ -74,26 +69,25 @@ class LokiClient
       query: query,
       start: start_time,
       end: end_time,
-      limit: @options[:limit] == -1 ? nil : @options[:limit],
+      limit: @options[:limit]
     )
   end
 
-  def handle_response(response)
-    case response
-    when Net::HTTPSuccess
-      process_successful_response(response)
-    else
-      raise APIError, "HTTP #{response.code}: #{response.body}"
-    end
-  end
-
-  def process_successful_response(response)
+  def handle_response(response, &block)
+    raise APIError, "HTTP #{response.code}: #{response.body}" unless response.is_a?(Net::HTTPSuccess)
     data = JSON.parse response.body, symbolize_names: true
-
-    results = data.dig('data', 'result') || []
-    results.flat_map do |result|
-      result
+    earliest_in_batch = nil
+    res_hash = data[:data][:result].map do |result_rec|
+      current_time = Time.at(result_rec[:values][0][0].to_i / 1_000_000_000)
+      earliest_in_batch = (earliest_in_batch.nil? || current_time < earliest_in_batch) ? current_time : earliest_in_batch
+      {
+        stream: result_rec[:stream],
+        timestamp: current_time,
+        values: JSON.parse(result_rec[:values][0][1], symbolize_names: true)
+      }
     end
+    res_hash.each(&block)
+    earliest_in_batch.nil? ? 0 : earliest_in_batch.to_nano
   end
 
   def should_retry?(error)
