@@ -4,13 +4,36 @@ sass:
     padding: 0
     height: 100%
     width: 100%
+
+  .loading-dots span
+    animation: dots 1.5s infinite
+    opacity: 0
+    display: inline-block
+
+  .loading-dots span:nth-child(1)
+    animation-delay: 0.0s
+
+  .loading-dots span:nth-child(2)
+    animation-delay: 0.2s
+
+  .loading-dots span:nth-child(3)
+    animation-delay: 0.4s
+
+  @keyframes dots
+    0%
+      opacity: 0
+    50%
+      opacity: 1
+    100%
+      opacity: 0
+
   .vis-item.clickable
     cursor: pointer
   .vis-item.neutral
     background-color: gray
     --status-color: gray
-    border-color: gray
 
+    border-color: gray
   .vis-item.ok
     background-color: green
     --status-color: green

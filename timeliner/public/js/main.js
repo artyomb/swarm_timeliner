@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
     async function loadTimelineData(backend_path='/timeline_data') {
         try {
+            document.getElementById('itemsShown').innerHTML = `Items shown: <span class="loading-dots">loading<span>.</span><span>.</span><span>.</span></span>`;
             const timeSelectValue = document.getElementById('timeSelect').value;
             const checkBoxValue = document.getElementById('healthChecks_CheckBox').checked;
             const response = await fetch(backend_path, {
@@ -24,6 +25,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const items = new vis.DataSet(data.items.map(item => {
                 let typeClass = item.type === 'point' ? 'event-point' : '';
                 typeClass += item.myType === 'canBeExploredById' ? ' clickable' : '';
+                if (item.src_jsons && !typeClass.includes('clickable')) typeClass += ' clickable';
                 const statusClasses = typeof item.statuses === 'string' ? item.statuses : (Array.isArray(item.statuses) && item.statuses.length ? item.statuses.join(' ') : '');
                 const className = `${typeClass} ${statusClasses}`.trim();
                 const time_start = new Date(item.start * 1000);
@@ -41,7 +43,8 @@ document.addEventListener('DOMContentLoaded', () => {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json'},
                         body: JSON.stringify({ cont_id: item.id}),
-                    } : null
+                    } : null,
+                    src_jsons: item.src_jsons
                 };
             }));            // Specify options for the timeline
             document.getElementById('itemsShown').innerText = (` Items shown: ${items.length}`);
@@ -90,7 +93,7 @@ document.addEventListener('DOMContentLoaded', () => {
                                         </head>
                                         <body>
                                             <h1>Response Data</h1>
-                                            <pre>${json_data.message}</pre>
+                                            <pre>${JSON.stringify(json_data, null,2)}</pre>
                                         </body>
                                     </html>
                                 `);
@@ -103,42 +106,45 @@ document.addEventListener('DOMContentLoaded', () => {
                             alert("An error occurred while fetching data. Check the console for details.");
                         }
                     }
-                }
+                    if (selectedItem.src_jsons) {
+                        try {
+                            const newTab = window.open('', '_blank');
+                            if (newTab) {
+                                newTab.document.open();
+                                const json_data = typeof selectedItem.src_jsons === 'string' ? JSON.parse(selectedItem.src_jsons) : selectedItem.src_jsons;
+                                newTab.document.write(`
+                                    <html>
+                                        <head>
+                                            <title>Response Data</title>
+                                            <style>
+                                                body { font-family: Arial, sans-serif; padding: 20px; }
+                                                pre { background: #f4f4f4; padding: 10px; border: 1px solid #ddd; }
+                                            </style>
+                                        </head>
+                                        <body>
+                                            <h1>Response Data</h1>
+                                            <pre>${JSON.stringify(json_data, null,2)}}</pre>
+                                        </body>
+                                    </html>
+                                `);
+                                newTab.document.close();
+                            } else {
+                                alert("Popup blocker prevented opening a new tab.");
+                            }
+                        } catch (error) {
+                            console.error("Error parsing data:", error);
+                            alert("An error occurred while parsing data. Check the console for details.");
+                        }
+                    }                }
             });
         } catch (error) {
-            console.error("Error loading timeline data:", error);
+            document.getElementById('itemsShown').innerHTML = `Error loading timeline data: ${error.message}`;
+            console.error(error);
         }
     }
-    // Your existing code here
-    const timeSelect = document.getElementById('timeSelect');
-    timeSelect.addEventListener('change', () => {
-        const selectedTimePeriod = timeSelect.value;
-    });
-
     const refreshButton = document.getElementById('refreshButton');
     refreshButton.addEventListener('click', () => {
-        document.getElementById('itemsShown').innerHTML = `Items shown: <span class="loading-dots">loading<span>.</span><span>.</span><span>.</span></span>
-            <style>
-                .loading-dots span {
-                    animation: dots 1.5s infinite;
-                    opacity: 0;
-                    display: inline-block;
-                }
-                .loading-dots span:nth-child(1) { animation-delay: 0.0s; }
-                .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
-                .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
-                @keyframes dots {
-                    0% { opacity: 0; }
-                    50% { opacity: 1; }
-                    100% { opacity: 0; }
-                }
-            </style>`;
         loadTimelineData('/timeline_data');
-    });
-    const healthChecks_CheckBox = document.getElementById('healthChecks_CheckBox');
-    healthChecks_CheckBox.addEventListener('change', () => {
-         // loadTimelineData('/timeline_data');
-
     });
     loadTimelineData('/timeline_data');
 });
