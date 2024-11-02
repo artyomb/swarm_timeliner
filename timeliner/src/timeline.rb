@@ -77,8 +77,9 @@ def get_timeline_data(data)
         services[svc_name][:containers][cid][:end] = timestamp if ((CONTAINER_STOP_ACTIONS.include? action) && ((services[svc_name][:containers][cid][:end] == nil) || (services[svc_name][:containers][cid][:end] < timestamp)))
       end
     elsif rec[:Type] == 'service'
-      existing_event = services[svc_name][:events].find { |e| e[:action] == action && e[:timestamp] == timestamp }
-      services[svc_name][:events] << (!load_source_jsons ? { action: action, timestamp: timestamp, ext_code: ext_code} : { action: action, timestamp: timestamp, ext_code: ext_code, src_jsons: [data_rec]}) unless existing_event
+      new_event = { action: action, timestamp: timestamp, ext_code: ext_code, src_jsons:[]}
+      new_event[:src_jsons] << [data_rec] if load_source_jsons
+      services[svc_name][:events] << new_event
     end
   end
   results = {
@@ -88,12 +89,12 @@ def get_timeline_data(data)
     },
     items: {
       points: {
-        container_events: services.keys.flat_map { |svc_name| services[svc_name][:containers].flat_map {|cid, cont| cont[:events].map {|event| { id: cid + " " + event[:action] + " " + event[:timestamp].to_s, content: event[:action], type: 'point', groupId: cid, start: event[:timestamp], ext_code: event[:ext_code], statuses: get_status_event(event), src_jsons: event[:src_jsons].to_json } } } },    # container_events
-        service_events: services.keys.flat_map { |svc_name| services[svc_name][:events].flat_map {|event| { id: "Service event: " + svc_name + " " + event[:action] + " " + event[:timestamp].to_s, content: event[:action], ext_code: event[:ext_code], type: 'point', groupId: svc_name, start: event[:timestamp], statuses: get_status_event(event), src_jsons: event[:src_jsons].to_json } } }    # service_events
+        container_events: services.keys.flat_map { |svc_name| services[svc_name][:containers].flat_map {|cid, cont| cont[:events].map {|event| { id: cid + " " + event[:action] + " " + event[:timestamp].to_s, action: event[:action], groupId: cid, start: event[:timestamp], ext_code: event[:ext_code], statuses: get_status_event(event), src_jsons: event[:src_jsons].to_json } } } },    # container_events
+        service_events: services.keys.flat_map { |svc_name| services[svc_name][:events].flat_map {|event| { id: svc_name + " " + event[:action] + " " + event[:timestamp].to_s, action: event[:action], groupId: svc_name, start: event[:timestamp], ext_code: event[:ext_code], statuses: get_status_event(event), src_jsons: event[:src_jsons].to_json } } }    # service_events
       },
       ranges: {
-        containers: services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| { id: cid, content: "Container", type: 'range', myType: 'canBeExploredById', groupId: cid, start: cont[:start].nil? ? default_start_time : cont[:start] , end: cont[:end].nil? ? default_end_time : cont[:end], statuses: get_status_cont(cont[:start], cont[:end], cont[:latest_start]) } } },   # containers
-        health_checks: (collect_health_checks ? services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| cont[:health_checks].flat_map { |hc_id, hc| { id: hc_id, content: "Health check", type: 'range', myType: 'HealthCheck', groupId: cid, start: hc[:start_hc].nil? ? hc[:end_hc] : hc[:start_hc], end: hc[:end_hc].nil? ? hc[:start_hc] : hc[:end_hc], statuses: get_status_health_check(hc), ext_code: hc[:hc_ext_code], src_jsons: hc[:src_jsons].to_json } } } } : [] )    # health_checks
+        containers: services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| { id: cid, groupId: cid, start: cont[:start].nil? ? default_start_time : cont[:start] , end: cont[:end].nil? ? default_end_time : cont[:end], statuses: get_status_cont(cont[:start], cont[:end], cont[:latest_start]) } } },   # containers
+        health_checks: (collect_health_checks ? services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| cont[:health_checks].flat_map { |hc_id, hc| { id: hc_id, groupId: cid, start: hc[:start_hc].nil? ? hc[:end_hc] : hc[:start_hc], end: hc[:end_hc].nil? ? hc[:start_hc] : hc[:end_hc], statuses: get_status_health_check(hc), ext_code: hc[:hc_ext_code], src_jsons: hc[:src_jsons].to_json } } } } : [] )    # health_checks
      }
     }
   }

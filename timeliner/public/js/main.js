@@ -1,79 +1,53 @@
-function synchronizeDataset(source, target) {
-    source.on('add', (event, properties) => {
-        target.add(properties.items);
-    });
-
-    source.on('update', (event, properties) => {
-        target.update(properties.items);
-    });
-
-    source.on('remove', (event, properties) => {
-        target.remove(properties.items);
-    });
-}
-
 function refreshDataWithReplacement(data) {
     const uploaded_service_groups = data.groups.services.map(group => {
         return {
-            id: group.id, content: `Service ${group.id}`, nestedGroups: group.containers || null, className: 'service-group',
+            id: group.id, content: `Service ${group.id}`, nestedGroups: group.containers || null,
             title: `Group ${group.id} with containers: ${group.containers ? group.containers.join(', ') : 'none'}`
-
         }
     });
-    const uploaded_container_groups = data.groups.container_groups.map(group => {
+    const uploaded_container_groups = data.groups.containers.map(group => {
         return {
-            id: group.id, content: 'Service container with events', title: `Container with id = ${group.id}`, className: 'container-group'
+            id: group.id, content: 'Service container with events', title: `Container with id = ${group.id}`
         }
     });
-
     const uploaded_container_events_items = data.items.points.container_events.map(item => {
-        let typeClass = item.type === 'point' ?  : '';
-        typeClass += item.myType === 'canBeExploredById' ? ' clickable' : '';
-        if (item.src_jsons && item.src_jsons !== null && item.src_jsons !== "null" && !typeClass.includes('clickable')) typeClass += ' clickable';
-        const statusClasses = 'event-point clickable' + (typeof item.statuses === 'string' ? item.statuses : (Array.isArray(item.statuses) && item.statuses.length ? item.statuses.join(' ') : '')).trim();
-        const className = `${typeClass} ${statusClasses}`
+        const statusClasses = item.statuses.length ? ' ' + item.statuses.join(' ') : '';
         const time_start = new Date(item.start * 1000);
-        const exit_code_str = item.ext_code != null ? `Exit code: ${item.ext_code}` : '';
-        const time_end = item.type !== 'point' ? new Date(item.end * 1000) : null;
         return {
-            ...item,
-            content: item.content.length > 9 ? item.content.substring(0, 6) + '...' : item.content,
-            group: item.groupId, // Associate item with a group ID (container or service)
-            start: time_start,
-            end: time_end,
-            title: `Item details: ${item.content} with id = ${item.id}<br>Start time = ${time_start} End time ${time_end} ${exit_code_str}`,
-            className: className,
-            backend_init: item.myType === 'canBeExploredById' ? {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json'},
-                body: JSON.stringify({ cont_id: item.id}),
-            } : null,
+            type: 'point', ext_code: item.ext_code, content: item.action.length > 9 ? item.action.substring(0, 6) + '...' : item.action, src_jsons: item.src_jsons,
+            group: item.groupId, start: time_start, end: null, title: `Container event: id = ${item.id}<br>Appeared at ${time_start}; Exit code: ${item.ext_code}`,
+            className: 'event-point' + statusClasses + (((item.src_jsons !== undefined) && item.src_jsons === "[]") ? '' : ' clickable')
         };
     });
-
-
-    const items = data.items.map(item => {
-        let typeClass = item.type === 'point' ? 'event-point' : '';
-        typeClass += item.myType === 'canBeExploredById' ? ' clickable' : '';
-        if (item.src_jsons && item.src_jsons !== null && item.src_jsons !== "null" && !typeClass.includes('clickable')) typeClass += ' clickable';
-        const statusClasses = typeof item.statuses === 'string' ? item.statuses : (Array.isArray(item.statuses) && item.statuses.length ? item.statuses.join(' ') : '');
-        const className = `${typeClass} ${statusClasses}`.trim();
+    const uploaded_service_events_items = data.items.points.service_events.map(item => {
+        const statusClasses = item.statuses.length ? ' ' + item.statuses.join(' ') : '';
         const time_start = new Date(item.start * 1000);
-        const exit_code_str = item.ext_code != null ? `Exit code: ${item.ext_code}` : '';
-        const time_end = item.type !== 'point' ? new Date(item.end * 1000) : null;
         return {
-            ...item,
-            content: item.content.length > 9 ? item.content.substring(0, 6) + '...' : item.content,
-            group: item.groupId, // Associate item with a group ID (container or service)
-            start: time_start,
-            end: time_end,
-            title: `Item details: ${item.content} with id = ${item.id}<br>Start time = ${time_start} End time ${time_end} ${exit_code_str}`,
-            className: className,
-            backend_init: item.myType === 'canBeExploredById' ? {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json'},
-                body: JSON.stringify({ cont_id: item.id}),
-            } : null,
+            type: 'point', ext_code: item.ext_code, content: item.action.length > 9 ? item.action.substring(0, 6) + '...' : item.action, src_jsons: item.src_jsons,
+            group: item.groupId, start: time_start, end: null, title: `Service event: id = ${item.id}<br>Appeared at ${time_start}; Exit code: ${item.ext_code}`,
+            className: 'event-point' + statusClasses + (((item.src_jsons !== undefined) && item.src_jsons === "[]") ? '' : ' clickable')
+        };
+    });
+    const uploaded_containers_items =  data.items.ranges.containers.map(item => {
+        const statusClasses = (item.statuses.length) ? (' ' + item.statuses.join(' ')) : '';
+        const time_start = new Date(item.start * 1000);
+        const time_end = new Date(item.end * 1000);
+        return {
+            id: item.id, type: 'range', content: 'Container with id: ' + ((item.id.length) > 9 ? item.id.substring(0, 6) + '...' : item.id),
+            group: item.groupId, start: time_start, end: time_end,
+            title: `Item details: container with id = ${item.id} <br>Start time = ${time_start} End time ${time_end}`,
+            className: 'clickable' + statusClasses,
+            backend_init: { method: 'POST', headers: { 'Content-Type': 'application/json'}, body: JSON.stringify({ cont_id: item.id}),}
+        };
+    });
+    const uploaded_health_checks_items =  data.items.ranges.health_checks.map(item => {
+        const statusClasses = item.statuses.length ? ' ' + item.statuses.join(' ') : '';
+        const time_start = new Date(item.start * 1000);
+        const time_end = new Date(item.end * 1000);
+        return {
+            id: item.id, type: 'range', content: 'Health check with id: ' + item.id.length > 9 ? item.id.substring(0, 6) + '...' : item.id,
+            group: item.groupId, start: time_start, end: time_end, ext_code: item.ext_code, className: 'clickable' + statusClasses,
+            title: `Item details: health check with id = ${item.id} <br>Start time = ${time_start} End time ${time_end} Exit code: ${item.ext_code}`
         };
     });
     service_groups.clear();
@@ -83,45 +57,29 @@ function refreshDataWithReplacement(data) {
     containers_groups.add(uploaded_container_groups);
 
     container_events_items.clear();
-    container_events_items.add(data.container_events_items);
+    container_events_items.add(uploaded_container_events_items);
 
     service_events_items.clear();
-    service_events_items.add(data.service_events_items);
+    service_events_items.add(uploaded_service_events_items);
 
-    container_items.clear();
-    container_items.add(data.container_items);
+    containers_items.clear();
+    containers_items.add(uploaded_containers_items);
 
     health_checks_items.clear();
-    health_checks_items.add(data.health_checks_items);
+    health_checks_items.add(uploaded_health_checks_items);
 }
 
-function refreshDataWithUpdates(data) {
-    // Update each dataset with new or modified items
-    service_groups.update(data.service_groups);
-    containers_groups.update(data.container_groups);
-    container_events_items.update(data.container_events_items);
-    service_events_items.update(data.service_events_items);
-    container_items.update(data.container_items);
-    health_checks_items.update(data.health_checks_items);
-}
 
 const service_groups = new vis.DataSet([]);
 const containers_groups = new vis.DataSet([]);
 
 const container_events_items = new vis.DataSet([]);
 const service_events_items = new vis.DataSet([]);
-const container_items = new vis.DataSet([]);
+const containers_items = new vis.DataSet([]);
 const health_checks_items = new vis.DataSet([]);
 
-const all_groups = new vis.DataSet([]);
-const all_items = new vis.DataSet([]);
-
-synchronizeDataset(service_groups, all_groups);
-synchronizeDataset(containers_groups, all_groups);
-synchronizeDataset(container_events_items, all_items);
-synchronizeDataset(service_events_items, all_items);
-synchronizeDataset(container_items, all_items);
-synchronizeDataset(health_checks_items, all_items);
+let all_groups = null;
+let all_items = null;
 
 let container = null;
 let timeline = null;
@@ -145,26 +103,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const healthChecks_CheckBox_Value = document.getElementById('healthChecks_CheckBox').checked;
             const load_source_jsons_checkbox_value = document.getElementById('load_source_jsons_checkbox').checked;
             const response = await fetch(backend_path, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json'},
-                body: JSON.stringify({ since: timeSelectValue, collect_health_checks: healthChecks_CheckBox_Value, load_source_jsons: load_source_jsons_checkbox_value} ),
+                method: 'POST', headers: { 'Content-Type': 'application/json'}, body: JSON.stringify({ since: timeSelectValue, collect_health_checks: healthChecks_CheckBox_Value, load_source_jsons: load_source_jsons_checkbox_value} ),
             });
-
             const data = await response.json(); // Parse JSON data
             refreshDataWithReplacement(data)
-
+            all_groups = new vis.DataSet(service_groups.get().concat(containers_groups.get()));
+            all_items = new vis.DataSet(container_events_items.get().concat(service_events_items.get().concat(containers_items.get().concat(health_checks_items.get()))));
             document.getElementById('itemsShown').innerText = (` Items shown: ${all_items.length}`);
-
-
-            // Create the timeline
             if (container == null) container = document.getElementById("visualization");
-
             if (timeline == null) timeline = new vis.Timeline(container, all_items, all_groups, options);
             window.addEventListener("resize", () => timeline.redraw());
+            timeline.setItems(all_items);
+            timeline.setGroups(all_groups);
             timeline.on('select', async function (properties) {
                 const selectedItemId = properties.items[0];
                 if (selectedItemId) {
-                    const selectedItem = items.get(selectedItemId);
+                    const selectedItem = all_items.get(selectedItemId);
                     if (selectedItem.backend_init) {
                         const backend_path = '/get_cont_logs';
                         try {
@@ -195,15 +149,13 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </html>
                                 `);
                                 newTab.document.close();
-                            } else {
-                                alert("Popup blocker prevented opening a new tab.");
                             }
                         } catch (error) {
                             console.error("Error fetching data:", error);
                             alert("An error occurred while fetching data. Check the console for details.");
                         }
                     }
-                    if (selectedItem.src_jsons && selectedItem.src_jsons !== null && selectedItem.src_jsons !== "null") {
+                    if ((selectedItem.src_jsons !== undefined) && (selectedItem.src_jsons !== "[]")) {
                         try {
                             const newTab = window.open('', '_blank');
                             if (newTab) {
@@ -225,33 +177,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                     </html>
                                 `);
                                 newTab.document.close();
-                            } else {
-                                alert("Popup blocker prevented opening a new tab.");
                             }
                         } catch (error) {
                             console.error("Error parsing data:", error);
                             alert("An error occurred while parsing data. Check the console for details.");
                         }
-                    }                }
+                    }
+                }
             });
-            var group = {
-                id: 1, // Unique ID for each group (service or container)
-                content: 'Test Group', // Display name for the group
-                nestedGroups: ['Nested group 1', 'Nested group 2'],  // Use nested groups for containers under services
-                title: 'Test group with two empty nested',
-                className: 'service-group' // Add classes for styling
-            };
-            var item = {
-                id: 34654,
-                type: 'background',
-                group: 1,
-                start: new Date(2024, 9, 2, 7, 1, 0),
-                end: new Date(2024, 10, 2, 8, 3, 0),
-                content: 'Test Item',
-                title: 'Test Item'
-            };
-            all_groups.add(group);
-            all_items.add(item)
         } catch (error) {
             document.getElementById('itemsShown').innerHTML = `Error loading timeline data: ${error.message}`;
             console.error(error);
