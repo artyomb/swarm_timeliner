@@ -1,68 +1,165 @@
+function synchronizeDataset(source, target) {
+    source.on('add', (event, properties) => {
+        target.add(properties.items);
+    });
+
+    source.on('update', (event, properties) => {
+        target.update(properties.items);
+    });
+
+    source.on('remove', (event, properties) => {
+        target.remove(properties.items);
+    });
+}
+
+function refreshDataWithReplacement(data) {
+    const uploaded_service_groups = data.groups.services.map(group => {
+        return {
+            id: group.id, content: `Service ${group.id}`, nestedGroups: group.containers || null, className: 'service-group',
+            title: `Group ${group.id} with containers: ${group.containers ? group.containers.join(', ') : 'none'}`
+
+        }
+    });
+    const uploaded_container_groups = data.groups.container_groups.map(group => {
+        return {
+            id: group.id, content: 'Service container with events', title: `Container with id = ${group.id}`, className: 'container-group'
+        }
+    });
+
+    const uploaded_container_events_items = data.items.points.container_events.map(item => {
+        let typeClass = item.type === 'point' ?  : '';
+        typeClass += item.myType === 'canBeExploredById' ? ' clickable' : '';
+        if (item.src_jsons && item.src_jsons !== null && item.src_jsons !== "null" && !typeClass.includes('clickable')) typeClass += ' clickable';
+        const statusClasses = 'event-point clickable' + (typeof item.statuses === 'string' ? item.statuses : (Array.isArray(item.statuses) && item.statuses.length ? item.statuses.join(' ') : '')).trim();
+        const className = `${typeClass} ${statusClasses}`
+        const time_start = new Date(item.start * 1000);
+        const exit_code_str = item.ext_code != null ? `Exit code: ${item.ext_code}` : '';
+        const time_end = item.type !== 'point' ? new Date(item.end * 1000) : null;
+        return {
+            ...item,
+            content: item.content.length > 9 ? item.content.substring(0, 6) + '...' : item.content,
+            group: item.groupId, // Associate item with a group ID (container or service)
+            start: time_start,
+            end: time_end,
+            title: `Item details: ${item.content} with id = ${item.id}<br>Start time = ${time_start} End time ${time_end} ${exit_code_str}`,
+            className: className,
+            backend_init: item.myType === 'canBeExploredById' ? {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json'},
+                body: JSON.stringify({ cont_id: item.id}),
+            } : null,
+        };
+    });
+
+
+    const items = data.items.map(item => {
+        let typeClass = item.type === 'point' ? 'event-point' : '';
+        typeClass += item.myType === 'canBeExploredById' ? ' clickable' : '';
+        if (item.src_jsons && item.src_jsons !== null && item.src_jsons !== "null" && !typeClass.includes('clickable')) typeClass += ' clickable';
+        const statusClasses = typeof item.statuses === 'string' ? item.statuses : (Array.isArray(item.statuses) && item.statuses.length ? item.statuses.join(' ') : '');
+        const className = `${typeClass} ${statusClasses}`.trim();
+        const time_start = new Date(item.start * 1000);
+        const exit_code_str = item.ext_code != null ? `Exit code: ${item.ext_code}` : '';
+        const time_end = item.type !== 'point' ? new Date(item.end * 1000) : null;
+        return {
+            ...item,
+            content: item.content.length > 9 ? item.content.substring(0, 6) + '...' : item.content,
+            group: item.groupId, // Associate item with a group ID (container or service)
+            start: time_start,
+            end: time_end,
+            title: `Item details: ${item.content} with id = ${item.id}<br>Start time = ${time_start} End time ${time_end} ${exit_code_str}`,
+            className: className,
+            backend_init: item.myType === 'canBeExploredById' ? {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json'},
+                body: JSON.stringify({ cont_id: item.id}),
+            } : null,
+        };
+    });
+    service_groups.clear();
+    service_groups.add(uploaded_service_groups);
+
+    containers_groups.clear();
+    containers_groups.add(uploaded_container_groups);
+
+    container_events_items.clear();
+    container_events_items.add(data.container_events_items);
+
+    service_events_items.clear();
+    service_events_items.add(data.service_events_items);
+
+    container_items.clear();
+    container_items.add(data.container_items);
+
+    health_checks_items.clear();
+    health_checks_items.add(data.health_checks_items);
+}
+
+function refreshDataWithUpdates(data) {
+    // Update each dataset with new or modified items
+    service_groups.update(data.service_groups);
+    containers_groups.update(data.container_groups);
+    container_events_items.update(data.container_events_items);
+    service_events_items.update(data.service_events_items);
+    container_items.update(data.container_items);
+    health_checks_items.update(data.health_checks_items);
+}
+
+const service_groups = new vis.DataSet([]);
+const containers_groups = new vis.DataSet([]);
+
+const container_events_items = new vis.DataSet([]);
+const service_events_items = new vis.DataSet([]);
+const container_items = new vis.DataSet([]);
+const health_checks_items = new vis.DataSet([]);
+
+const all_groups = new vis.DataSet([]);
+const all_items = new vis.DataSet([]);
+
+synchronizeDataset(service_groups, all_groups);
+synchronizeDataset(containers_groups, all_groups);
+synchronizeDataset(container_events_items, all_items);
+synchronizeDataset(service_events_items, all_items);
+synchronizeDataset(container_items, all_items);
+synchronizeDataset(health_checks_items, all_items);
+
+let container = null;
+let timeline = null;
+const options = {
+    stack: false, // Prevent stacking to keep items aligned with groups
+    orientation: 'top',
+    order: (a, b) => a.start - b.start,
+    start: new Date(new Date().setHours(0, 0, 0, 0)),
+    end: new Date(1000 * 60 * 60 * 24 + new Date().valueOf()),
+    editable: false,
+    margin: { item: 10, axis: 5 },
+    showCurrentTime: false
+};
+
+
 document.addEventListener('DOMContentLoaded', () => {
     async function loadTimelineData(backend_path='/timeline_data') {
         try {
             document.getElementById('itemsShown').innerHTML = `Items shown: <span class="loading-dots">loading<span>.</span><span>.</span><span>.</span></span>`;
             const timeSelectValue = document.getElementById('timeSelect').value;
-            const checkBoxValue = document.getElementById('healthChecks_CheckBox').checked;
+            const healthChecks_CheckBox_Value = document.getElementById('healthChecks_CheckBox').checked;
             const load_source_jsons_checkbox_value = document.getElementById('load_source_jsons_checkbox').checked;
             const response = await fetch(backend_path, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json'},
-                body: JSON.stringify({ since: timeSelectValue, collect_health_checks: checkBoxValue, load_source_jsons: load_source_jsons_checkbox_value} ),
+                body: JSON.stringify({ since: timeSelectValue, collect_health_checks: healthChecks_CheckBox_Value, load_source_jsons: load_source_jsons_checkbox_value} ),
             });
 
             const data = await response.json(); // Parse JSON data
+            refreshDataWithReplacement(data)
 
-            const groups = new vis.DataSet(data.groups.map(group => {
-                const title_for_group = group.type === 'service' ? `Group ${group.id} with containers: ${group.containers ? group.containers.join(', ') : 'none'}` : `Container with id = ${group.id}`;
-                return {
-                    id: group.id, // Unique ID for each group (service or container)
-                    content: group.type === 'service' ? `Service ${group.id}` : 'Service container with events', // Display name for the group
-                    nestedGroups: group.containers || null, // Use nested groups for containers under services
-                    title: title_for_group, // Title for the group
-                    className: group.type === 'service' ? 'service-group' : 'container-group' // Add classes for styling
-                }
-            }));
-            const items = new vis.DataSet(data.items.map(item => {
-                let typeClass = item.type === 'point' ? 'event-point' : '';
-                typeClass += item.myType === 'canBeExploredById' ? ' clickable' : '';
-                if (item.src_jsons && item.src_jsons !== null && item.src_jsons !== "null" && !typeClass.includes('clickable')) typeClass += ' clickable';
-                const statusClasses = typeof item.statuses === 'string' ? item.statuses : (Array.isArray(item.statuses) && item.statuses.length ? item.statuses.join(' ') : '');
-                const className = `${typeClass} ${statusClasses}`.trim();
-                const time_start = new Date(item.start * 1000);
-                const exit_code_str = item.ext_code != null ? `Exit code: ${item.ext_code}` : '';
-                const time_end = item.type !== 'point' ? new Date(item.end * 1000) : null;
-                return {
-                    ...item,
-                    content: item.content.length > 9 ? item.content.substring(0, 6) + '...' : item.content,
-                    group: item.groupId, // Associate item with a group ID (container or service)
-                    start: time_start,
-                    end: time_end,
-                    title: `Item details: ${item.content} with id = ${item.id}<br>Start time = ${time_start} End time ${time_end} ${exit_code_str}`,
-                    className: className,
-                    backend_init: item.myType === 'canBeExploredById' ? {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json'},
-                        body: JSON.stringify({ cont_id: item.id}),
-                    } : null,
-                };
-            }));            // Specify options for the timeline
-            document.getElementById('itemsShown').innerText = (` Items shown: ${items.length}`);
-            const options = {
-                stack: false, // Prevent stacking to keep items aligned with groups
-                orientation: 'top',
-                order: (a, b) => a.start - b.start,
-                start: new Date(new Date().setHours(0, 0, 0, 0)),
-                end: new Date(1000 * 60 * 60 * 24 + new Date().valueOf()),
-                editable: false,
-                margin: { item: 10, axis: 5 },
-                showCurrentTime: false
-            };
+            document.getElementById('itemsShown').innerText = (` Items shown: ${all_items.length}`);
+
 
             // Create the timeline
-            const container = document.getElementById("visualization");
-            if (container) container.innerHTML = '';
-            const timeline = new vis.Timeline(container, items, groups, options);
+            if (container == null) container = document.getElementById("visualization");
+
+            if (timeline == null) timeline = new vis.Timeline(container, all_items, all_groups, options);
             window.addEventListener("resize", () => timeline.redraw());
             timeline.on('select', async function (properties) {
                 const selectedItemId = properties.items[0];
@@ -137,6 +234,24 @@ document.addEventListener('DOMContentLoaded', () => {
                         }
                     }                }
             });
+            var group = {
+                id: 1, // Unique ID for each group (service or container)
+                content: 'Test Group', // Display name for the group
+                nestedGroups: ['Nested group 1', 'Nested group 2'],  // Use nested groups for containers under services
+                title: 'Test group with two empty nested',
+                className: 'service-group' // Add classes for styling
+            };
+            var item = {
+                id: 34654,
+                type: 'background',
+                group: 1,
+                start: new Date(2024, 9, 2, 7, 1, 0),
+                end: new Date(2024, 10, 2, 8, 3, 0),
+                content: 'Test Item',
+                title: 'Test Item'
+            };
+            all_groups.add(group);
+            all_items.add(item)
         } catch (error) {
             document.getElementById('itemsShown').innerHTML = `Error loading timeline data: ${error.message}`;
             console.error(error);
