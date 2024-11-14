@@ -111,29 +111,27 @@ document.addEventListener('DOMContentLoaded', () => {
             all_items = new vis.DataSet(container_events_items.get().concat(service_events_items.get().concat(containers_items.get().concat(health_checks_items.get()))));
             document.getElementById('itemsShown').innerText = (` Items shown: ${all_items.length}`);
             if (container == null) container = document.getElementById("visualization");
-            if (timeline == null) timeline = new vis.Timeline(container, all_items, all_groups, options);
-            window.addEventListener("resize", () => timeline.redraw());
-            timeline.setItems(all_items);
-            timeline.setGroups(all_groups);
-            timeline.on('select', async function (properties) {
-                const selectedItemId = properties.items[0];
-                if (selectedItemId) {
-                    const selectedItem = all_items.get(selectedItemId);
-                    if (selectedItem.backend_init) {
-                        const backend_path = '/get_cont_logs';
-                        try {
-                            const logs_response = await fetch(backend_path, selectedItem.backend_init);
-                            if (!logs_response.ok) {
-                                throw new Error(`Error: ${logs_response.statusText}`);
-                            }
-                            const logs_data = await logs_response.json();
-                            const newTab = window.open('', '_blank');
+            if (timeline == null) {
+                timeline = new vis.Timeline(container, all_items, all_groups, options);
+                timeline.on('select', async function (properties) {
+                    const selectedItemId = properties.items[0];
+                    if (selectedItemId) {
+                        const selectedItem = all_items.get(selectedItemId);
+                        if (selectedItem.backend_init) {
+                            const backend_path = '/get_cont_logs';
+                            try {
+                                const logs_response = await fetch(backend_path, selectedItem.backend_init);
+                                if (!logs_response.ok) {
+                                    throw new Error(`Error: ${logs_response.statusText}`);
+                                }
+                                const logs_data = await logs_response.json();
+                                const newTab = window.open('', '_blank');
 
-                            // Write the JSON response to the new tab as formatted HTML
-                            if (newTab) {
-                                newTab.document.open();
-                                const json_data = JSON.parse(logs_data);
-                                newTab.document.write(`
+                                // Write the JSON response to the new tab as formatted HTML
+                                if (newTab) {
+                                    newTab.document.open();
+                                    const json_data = JSON.parse(logs_data);
+                                    newTab.document.write(`
                                     <html>
                                         <head>
                                             <title>Response Data</title>
@@ -148,20 +146,20 @@ document.addEventListener('DOMContentLoaded', () => {
                                         </body>
                                     </html>
                                 `);
-                                newTab.document.close();
+                                    newTab.document.close();
+                                }
+                            } catch (error) {
+                                console.error("Error fetching data:", error);
+                                alert("An error occurred while fetching data. Check the console for details.");
                             }
-                        } catch (error) {
-                            console.error("Error fetching data:", error);
-                            alert("An error occurred while fetching data. Check the console for details.");
                         }
-                    }
-                    if ((selectedItem.src_jsons !== undefined) && (selectedItem.src_jsons !== "[]")) {
-                        try {
-                            const newTab = window.open('', '_blank');
-                            if (newTab) {
-                                newTab.document.open();
-                                const json_data = typeof selectedItem.src_jsons === 'string' ? JSON.parse(selectedItem.src_jsons) : selectedItem.src_jsons;
-                                newTab.document.write(`
+                        if ((selectedItem.src_jsons !== undefined) && (selectedItem.src_jsons !== "[]")) {
+                            try {
+                                const newTab = window.open('', '_blank');
+                                if (newTab) {
+                                    newTab.document.open();
+                                    const json_data = typeof selectedItem.src_jsons === 'string' ? JSON.parse(selectedItem.src_jsons) : selectedItem.src_jsons;
+                                    newTab.document.write(`
                                     <html>
                                         <head>
                                             <title>Response Data</title>
@@ -176,15 +174,19 @@ document.addEventListener('DOMContentLoaded', () => {
                                         </body>
                                     </html>
                                 `);
-                                newTab.document.close();
+                                    newTab.document.close();
+                                }
+                            } catch (error) {
+                                console.error("Error parsing data:", error);
+                                alert("An error occurred while parsing data. Check the console for details.");
                             }
-                        } catch (error) {
-                            console.error("Error parsing data:", error);
-                            alert("An error occurred while parsing data. Check the console for details.");
                         }
                     }
-                }
-            });
+                });
+            }
+            window.addEventListener("resize", () => timeline.redraw());
+            timeline.setItems(all_items);
+            timeline.setGroups(all_groups);
         } catch (error) {
             document.getElementById('itemsShown').innerHTML = `Error loading timeline data: ${error.message}`;
             console.error(error);
