@@ -94,9 +94,16 @@ const options = {
     showCurrentTime: false
 };
 
+let isLoading = false;
+
 
 document.addEventListener('DOMContentLoaded', () => {
     async function loadTimelineData(backend_path='/timeline_data') {
+        if (isLoading) {
+            window.alert('Loading in progress, please, wait for it to finish');
+            return;
+        }
+        isLoading = true;
         try {
             document.getElementById('itemsShown').innerHTML = `Items shown: <span class="loading-dots">loading<span>.</span><span>.</span><span>.</span></span>`;
             const timeSelectValue = document.getElementById('timeSelect').value;
@@ -190,6 +197,8 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             document.getElementById('itemsShown').innerHTML = `Error loading timeline data: ${error.message}`;
             console.error(error);
+        } finally {
+            isLoading = false;
         }
     }
     const refreshButton = document.getElementById('refreshButton');
