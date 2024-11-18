@@ -19,13 +19,29 @@ function refreshDataWithReplacement(data) {
             className: 'event-point' + statusClasses + (((item.src_jsons !== undefined) && item.src_jsons === "[]") ? '' : ' clickable')
         };
     });
-    const uploaded_service_events_items = data.items.points.service_events.map(item => {
+    const uploaded_other_service_events_items = data.items.points.service_events.other_events.map(item => {
         const statusClasses = item.statuses.length ? ' ' + item.statuses.join(' ') : '';
         const time_start = new Date(item.start * 1000);
         return {
             type: 'point', ext_code: item.ext_code, content: item.action.length > 9 ? item.action.substring(0, 6) + '...' : item.action, src_jsons: item.src_jsons,
             group: item.groupId, start: time_start, end: null, title: `Service event: id = ${item.id}<br>Appeared at ${time_start}; Exit code: ${item.ext_code}`,
             className: 'event-point' + statusClasses + (((item.src_jsons !== undefined) && item.src_jsons === "[]") ? '' : ' clickable')
+        };
+    });
+    const uploaded_image_update_service_events_items = data.items.points.service_events.image_updates.map(item => {
+        const time_start = new Date(item.start * 1000);
+        return {
+            type: 'point', content: 'Image update', src_jsons: item.src_jsons,
+            group: item.groupId, start: time_start, end: null, title: `Service image update event: id = ${item.id}<br>Image = ${item.image}<br>Appeared at ${time_start}`,
+            className: 'event-point' + (((item.src_jsons !== undefined) && item.src_jsons === "[]") ? '' : ' clickable')
+        };
+    });
+    const uploaded_service_update_events = data.items.points.service_events.service_updates.map(item => {
+        const time_start = new Date(item.start * 1000);
+        return {
+            type: 'point', content: 'Service update', src_jsons: item.src_jsons,
+            group: item.groupId, start: time_start, end: null, title: `Service update: id = ${item.id}<br>Appeared at ${time_start};State = ${item.update_state}`,
+            className: 'event-point' + (((item.src_jsons !== undefined) && item.src_jsons === "[]") ? '' : ' clickable')
         };
     });
     const uploaded_containers_items =  data.items.ranges.containers.map(item => {
@@ -59,8 +75,14 @@ function refreshDataWithReplacement(data) {
     container_events_items.clear();
     container_events_items.add(uploaded_container_events_items);
 
-    service_events_items.clear();
-    service_events_items.add(uploaded_service_events_items);
+    other_service_events_items.clear();
+    other_service_events_items.add(uploaded_other_service_events_items);
+
+    image_update_service_events_items.clear();
+    image_update_service_events_items.add(uploaded_image_update_service_events_items);
+
+    service_update_events.clear();
+    service_update_events.add(uploaded_service_update_events);
 
     containers_items.clear();
     containers_items.add(uploaded_containers_items);
@@ -74,7 +96,9 @@ const service_groups = new vis.DataSet([]);
 const containers_groups = new vis.DataSet([]);
 
 const container_events_items = new vis.DataSet([]);
-const service_events_items = new vis.DataSet([]);
+const other_service_events_items = new vis.DataSet([]);
+const image_update_service_events_items = new vis.DataSet([]);
+const service_update_events = new vis.DataSet([]);
 const containers_items = new vis.DataSet([]);
 const health_checks_items = new vis.DataSet([]);
 
@@ -115,7 +139,17 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json(); // Parse JSON data
             refreshDataWithReplacement(data)
             all_groups = new vis.DataSet(service_groups.get().concat(containers_groups.get()));
-            all_items = new vis.DataSet(container_events_items.get().concat(service_events_items.get().concat(containers_items.get().concat(health_checks_items.get()))));
+            all_items = new vis.DataSet(container_events_items.get().concat(
+                image_update_service_events_items.get().concat(
+                    other_service_events_items.get().concat(
+                        service_update_events.get().concat(
+                            containers_items.get().concat(
+                                health_checks_items.get()
+                            )
+                        )
+                    )
+                )
+            ));
             document.getElementById('itemsShown').innerText = (` Items shown: ${all_items.length}`);
             if (container == null) container = document.getElementById("visualization");
             if (timeline == null) {

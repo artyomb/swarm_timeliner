@@ -58,7 +58,7 @@ def get_timeline_data(data)
     ext_code = rec[:Actor][:Attributes][:exitCode]
     hc_id = rec[:Actor][:Attributes][:execID]
     hc_ext_code = ext_code
-    services[svc_name] ||= { containers: {}, events: [] }
+    services[svc_name] ||= { containers: {}, events: [], image_updates: [], service_updates: [] }
     if rec[:Type] == 'container'
       services[svc_name][:containers][cid] ||= { start: nil, end: nil, latest_start: nil, events: [], health_checks: {} }
       if collect_health_checks && HEALTH_CHECK_EVENTS.any? { |event| action.include?(event)}
@@ -77,9 +77,28 @@ def get_timeline_data(data)
         services[svc_name][:containers][cid][:end] = timestamp if ((CONTAINER_STOP_ACTIONS.include? action) && ((services[svc_name][:containers][cid][:end] == nil) || (services[svc_name][:containers][cid][:end] < timestamp)))
       end
     elsif rec[:Type] == 'service'
-      new_event = { action: action, timestamp: timestamp, ext_code: ext_code, src_jsons:[]}
-      new_event[:src_jsons] << [data_rec] if load_source_jsons
-      services[svc_name][:events] << new_event
+      if action == 'update'
+        if rec[:Actor][:Attributes].has_key?(:'image.new')
+          image_update_entry = { timestamp: timestamp, image: rec[:Actor][:Attributes][:'image.new'], src_jsons: [] }
+          image_update_entry[:src_jsons] << [data_rec] if load_source_jsons
+          services[svc_name][:image_updates] << image_update_entry
+          puts("Found image update event for service #{svc_name} with entry #{image_update_entry}")
+        elsif rec[:Actor][:Attributes].has_key?(:'updatestate.new')
+          service_update_entry = { timestamp: timestamp, update_state: rec[:Actor][:Attributes][:'updatestate.new'], src_jsons: [] }
+          service_update_entry[:src_jsons] << [data_rec] if load_source_jsons
+          services[svc_name][:service_updates] << service_update_entry
+          puts("Found update event for service #{svc_name} with entry #{service_update_entry}")
+        else
+          new_event = { action: action, timestamp: timestamp, ext_code: ext_code, src_jsons: [] }
+          new_event[:src_jsons] << [data_rec] if load_source_jsons
+          services[svc_name][:events] << new_event
+          puts("Found event for service #{svc_name} with entry #{new_event}")
+        end
+      else
+        new_event = { action: action, timestamp: timestamp, ext_code: ext_code, src_jsons:[]}
+        new_event[:src_jsons] << [data_rec] if load_source_jsons
+        services[svc_name][:events] << new_event
+      end
     end
   end
   results = {
@@ -89,8 +108,12 @@ def get_timeline_data(data)
     },
     items: {
       points: {
-        container_events: services.keys.flat_map { |svc_name| services[svc_name][:containers].flat_map {|cid, cont| cont[:events].map {|event| { id: cid + " " + event[:action] + " " + event[:timestamp].to_s, action: event[:action], groupId: cid, start: event[:timestamp], ext_code: event[:ext_code], statuses: get_status_event(event), src_jsons: event[:src_jsons].to_json } } } },    # container_events
-        service_events: services.keys.flat_map { |svc_name| services[svc_name][:events].flat_map {|event| { id: svc_name + " " + event[:action] + " " + event[:timestamp].to_s, action: event[:action], groupId: svc_name, start: event[:timestamp], ext_code: event[:ext_code], statuses: get_status_event(event), src_jsons: event[:src_jsons].to_json } } }    # service_events
+        container_events: services.keys.flat_map { |svc_name| services[svc_name][:containers].flat_map {|cid, cont| cont[:events].map {|event| { id: cid + " " + event[:action] + " " + event[:timestamp].to_s, action: event[:action], groupId: cid, start: event[:timestamp], ext_code: event[:ext_code], statuses: get_status_event(event), src_jsons: event[:src_jsons].to_json } } } },
+        service_events: {
+          image_updates: services.keys.flat_map {|svc_name| services[svc_name][:image_updates].flat_map {|image_update| { id: svc_name + " image update " + image_update[:timestamp].to_s, image: image_update[:image], start: image_update[:timestamp], groupId: svc_name, src_jsons: image_update[:src_jsons].to_json } } },
+          service_updates: services.keys.flat_map {|svc_name| services[svc_name][:service_updates].flat_map {|service_update| { id: svc_name + " service update " + service_update[:timestamp].to_s, start: service_update[:timestamp], groupId: svc_name, update_state: service_update[:update_state], src_jsons: service_update[:src_jsons] } } },
+          other_events: services.keys.flat_map { |svc_name| services[svc_name][:events].flat_map {|event| { id: svc_name + " " + event[:action] + " " + event[:timestamp].to_s, action: event[:action], groupId: svc_name, start: event[:timestamp], ext_code: event[:ext_code], statuses: get_status_event(event), src_jsons: event[:src_jsons].to_json } } }
+        }
       },
       ranges: {
         containers: services.keys.flat_map{ |svc_name| services[svc_name][:containers].flat_map { |cid, cont| { id: cid, groupId: cid, start: cont[:start].nil? ? default_start_time : cont[:start] , end: cont[:end].nil? ? default_end_time : cont[:end], statuses: get_status_cont(cont[:start], cont[:end], cont[:latest_start]) } } },   # containers
