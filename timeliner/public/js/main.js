@@ -1,3 +1,6 @@
+const CONTAINER_START_ACTIONS = ['create', 'start'];
+const CONTAINER_STOP_ACTIONS = ['destroy', 'die', 'kill', 'stop'];
+
 function refreshDataWithReplacement(data) {
     const uploaded_service_groups = data.groups.services.map(group => {
         return {
@@ -91,6 +94,49 @@ function refreshDataWithReplacement(data) {
     health_checks_items.add(uploaded_health_checks_items);
 }
 
+function filter_container_events(container_events_dataset, tracking_events, take=false, container_id = ""){
+    return container_events_dataset.get({
+        filter: function (item){
+            return (container_id === "" ? true : item.group === container_id) && (take === tracking_events.some(event => item.content.includes(event)));
+        }
+    });
+}
+async function inspectContainerEvents(selectedItemId, listOfEvents){
+    const start_container_events = filter_container_events(container_events_items, listOfEvents,true, selectedItemId);
+    try {
+        const newTab = window.open('', '_blank');
+        if (newTab) {
+            newTab.document.open();
+            const json_data = JSON.stringify(start_container_events, null, 2);
+            newTab.document.write(`
+                                    <html>
+                                        <head>
+                                            <title>Start events inspection</title>
+                                            <style>
+                                                body { font-family: Arial, sans-serif; padding: 20px; }
+                                                pre { background: #f4f4f4; padding: 10px; border: 1px solid #ddd; }
+                                            </style>
+                                        </head>
+                                        <body>
+                                            <h1>Container ${selectedItemId} start events inspection</h1>
+                                            <pre>${json_data}</pre>
+                                        </body>
+                                    </html>
+                                `);
+            newTab.document.close();
+        }
+    } catch (error) {
+        console.error("Error parsing data:", error);
+        alert("An error occurred while parsing data. Check the console for details.");
+    }
+}
+async function inspectStartEvents(selectedItemId){
+    await inspectContainerEvents(selectedItemId, CONTAINER_START_ACTIONS);
+}
+async function inspectEndEvents(selectedItemId){
+    await inspectContainerEvents(selectedItemId, CONTAINER_STOP_ACTIONS);
+}
+
 
 const service_groups = new vis.DataSet([]);
 const containers_groups = new vis.DataSet([]);
@@ -140,7 +186,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const data = await response.json(); // Parse JSON data
             refreshDataWithReplacement(data)
             all_groups = new vis.DataSet(service_groups.get().concat(containers_groups.get()));
-            all_items = new vis.DataSet(container_events_items.get().concat(
+            all_items = new vis.DataSet(filter_container_events(container_events_items, CONTAINER_START_ACTIONS.concat(CONTAINER_STOP_ACTIONS), false).concat(
                 image_update_service_events_items.get().concat(
                     other_service_events_items.get().concat(
                         service_update_events.get().concat(
@@ -155,6 +201,52 @@ document.addEventListener('DOMContentLoaded', () => {
             if (container == null) container = document.getElementById("visualization");
             if (timeline == null) {
                 timeline = new vis.Timeline(container, all_items, all_groups, options);
+                timeline.on('contextmenu', function (props) {
+                    const selectedItemId = props.item;
+                    if (selectedItemId) {
+                        const selectedItem = all_items.get(selectedItemId);
+                        if (selectedItem.backend_init) {
+                            const menu = document.createElement('div');
+                            menu.className = 'context-menu';
+                            menu.style.position = 'absolute';
+                            menu.style.left = props.pageX + 'px';
+                            menu.style.top = props.pageY + 'px';
+                            menu.style.backgroundColor = '#ffffff';
+                            menu.style.border = '1px solid #ccc';
+                            menu.style.borderRadius = '4px';
+                            menu.style.boxShadow = '0 2px 5px rgba(0,0,0,0.2)';
+                            menu.style.padding = '5px 0';
+                            menu.innerHTML = `
+                                <div class="menu-item" onmouseover="this.style.backgroundColor='#f0f0f0'" onmouseout="this.style.backgroundColor='transparent'" style="padding: 8px 15px; cursor: pointer; border-bottom: 1px solid #eee;" onclick="inspectStartEvents('${selectedItemId}')">Inspect start events</div>
+                                <div class="menu-item" onmouseover="this.style.backgroundColor='#f0f0f0'" onmouseout="this.style.backgroundColor='transparent'" style="padding: 8px 15px; cursor: pointer;" onclick="inspectEndEvents('${selectedItemId}')">Inspect end events</div>
+                            `;
+                            document.body.appendChild(menu);
+
+                            const closeMenu = () => {
+                                document.body.removeChild(menu);
+                                document.removeEventListener('click', closeMenu);
+                                document.removeEventListener('mousemove', handleMouseMove);
+                            };
+
+                            const handleMouseMove = (e) => {
+                                const menuRect = menu.getBoundingClientRect();
+                                const distance = Math.sqrt(
+                                    Math.pow(e.clientX - (menuRect.left + menuRect.width/2), 2) +
+                                    Math.pow(e.clientY - (menuRect.top + menuRect.height/2), 2)
+                                );
+                                if (distance > 100) { // disappear if mouse is more than 100px away
+                                    closeMenu();
+                                }
+                            };
+
+                            setTimeout(() => {
+                                document.addEventListener('click', closeMenu);
+                                document.addEventListener('mousemove', handleMouseMove);
+                            }, 0);
+                        }
+                    }
+                    props.event.preventDefault();
+                });
                 timeline.on('select', async function (properties) {
                     const selectedItemId = properties.items[0];
                     if (selectedItemId) {
@@ -204,14 +296,14 @@ document.addEventListener('DOMContentLoaded', () => {
                                     newTab.document.write(`
                                     <html>
                                         <head>
-                                            <title>Response Data</title>
+                                            <title>Source JSON inspection</title>
                                             <style>
                                                 body { font-family: Arial, sans-serif; padding: 20px; }
                                                 pre { background: #f4f4f4; padding: 10px; border: 1px solid #ddd; }
                                             </style>
                                         </head>
                                         <body>
-                                            <h1>Response Data</h1>
+                                            <h1>Source JSON inspection</h1>
                                             <pre>${JSON.stringify(json_data, null,2)}}</pre>
                                         </body>
                                     </html>
