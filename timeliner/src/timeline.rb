@@ -37,8 +37,6 @@ def get_timeline_data(data)
                           default_end_time - (value * 60 * 60)
                         when 'd'
                           default_end_time - (value * 24 * 60 * 60)
-                        when 'all'
-                          default_end_time - (30 * 24 * 60 * 60) - 1
                         else
                           default_end_time - (30 * 24 * 60 * 60) - 1
                         end
@@ -82,20 +80,17 @@ def get_timeline_data(data)
           image_update_entry = { timestamp: timestamp, image: rec[:Actor][:Attributes][:'image.new'], src_jsons: [] }
           image_update_entry[:src_jsons] << [data_rec] if load_source_jsons
           services[svc_name][:image_updates] << image_update_entry
-          puts("Found image update event for service #{svc_name} with entry #{image_update_entry}")
         elsif rec[:Actor][:Attributes].has_key?(:'updatestate.new')
           service_update_entry = { timestamp: timestamp, update_state: rec[:Actor][:Attributes][:'updatestate.new'], src_jsons: [] }
           service_update_entry[:src_jsons] << [data_rec] if load_source_jsons
           services[svc_name][:service_updates] << service_update_entry
-          puts("Found update event for service #{svc_name} with entry #{service_update_entry}")
         else
           new_event = { action: action, timestamp: timestamp, ext_code: ext_code, src_jsons: [] }
           new_event[:src_jsons] << [data_rec] if load_source_jsons
           services[svc_name][:events] << new_event
-          puts("Found event for service #{svc_name} with entry #{new_event}")
         end
       else
-        new_event = { action: action, timestamp: timestamp, ext_code: ext_code, src_jsons:[]}
+        new_event = { action: action, timestamp: timestamp, ext_code: ext_code, src_jsons: [] }
         new_event[:src_jsons] << [data_rec] if load_source_jsons
         services[svc_name][:events] << new_event
       end
@@ -110,8 +105,8 @@ def get_timeline_data(data)
       points: {
         container_events: services.keys.flat_map { |svc_name| services[svc_name][:containers].flat_map {|cid, cont| cont[:events].map {|event| { id: cid + " " + event[:action] + " " + event[:timestamp].to_s, action: event[:action], groupId: cid, start: event[:timestamp], ext_code: event[:ext_code], statuses: get_status_event(event), src_jsons: event[:src_jsons].to_json } } } },
         service_events: {
-          image_updates: services.keys.flat_map {|svc_name| services[svc_name][:image_updates].flat_map {|image_update| { id: svc_name + " image update " + image_update[:timestamp].to_s, image: image_update[:image], start: image_update[:timestamp], groupId: svc_name, src_jsons: image_update[:src_jsons].to_json } } },
-          service_updates: services.keys.flat_map {|svc_name| services[svc_name][:service_updates].flat_map {|service_update| { id: svc_name + " service update " + service_update[:timestamp].to_s, start: service_update[:timestamp], groupId: svc_name, update_state: service_update[:update_state], src_jsons: service_update[:src_jsons] } } },
+          image_updates: services.keys.flat_map {|svc_name| services[svc_name][:image_updates].flat_map {|image_update| { id: svc_name + " image update " + image_update[:timestamp].to_s, start: image_update[:timestamp], groupId: svc_name, image: image_update[:image], src_jsons: image_update[:src_jsons].to_json } } },
+          service_updates: services.keys.flat_map {|svc_name| services[svc_name][:service_updates].flat_map {|service_update| { id: svc_name + " service update " + service_update[:timestamp].to_s, start: service_update[:timestamp], groupId: svc_name, update_state: service_update[:update_state], src_jsons: service_update[:src_jsons].to_json } } },
           other_events: services.keys.flat_map { |svc_name| services[svc_name][:events].flat_map {|event| { id: svc_name + " " + event[:action] + " " + event[:timestamp].to_s, action: event[:action], groupId: svc_name, start: event[:timestamp], ext_code: event[:ext_code], statuses: get_status_event(event), src_jsons: event[:src_jsons].to_json } } }
         }
       },

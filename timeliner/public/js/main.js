@@ -33,7 +33,7 @@ function refreshDataWithReplacement(data) {
         return {
             type: 'point', content: 'Image update', src_jsons: item.src_jsons,
             group: item.groupId, start: time_start, end: null, title: `Service image update event: id = ${item.id}<br>Image = ${item.image}<br>Appeared at ${time_start}`,
-            className: 'event-point' + (((item.src_jsons !== undefined) && item.src_jsons === "[]") ? '' : ' clickable')
+            className: 'event-point neutral' + (((item.src_jsons !== undefined) && item.src_jsons === "[]") ? '' : ' clickable')
         };
     });
     const uploaded_service_update_events = data.items.points.service_events.service_updates.map(item => {
@@ -41,7 +41,7 @@ function refreshDataWithReplacement(data) {
         return {
             type: 'point', content: 'Service update', src_jsons: item.src_jsons,
             group: item.groupId, start: time_start, end: null, title: `Service update: id = ${item.id}<br>Appeared at ${time_start};State = ${item.update_state}`,
-            className: 'event-point' + (((item.src_jsons !== undefined) && item.src_jsons === "[]") ? '' : ' clickable')
+            className: 'event-point neutral' + (((item.src_jsons !== undefined) && item.src_jsons === "[]") ? '' : ' clickable')
         };
     });
     const uploaded_containers_items =  data.items.ranges.containers.map(item => {
@@ -115,7 +115,8 @@ const options = {
     end: new Date(1000 * 60 * 60 * 24 + new Date().valueOf()),
     editable: false,
     margin: { item: 10, axis: 5 },
-    showCurrentTime: false
+    showCurrentTime: false,
+    zoomKey: 'ctrlKey'
 };
 
 let isLoading = false;
