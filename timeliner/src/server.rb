@@ -22,6 +22,7 @@ class Timeliner < Sinatra::Base
   # set :environment, :production
 
   get '/', &->(){ slim :index }
+  get '/logs/cid/:cid', &->(){ slim :logs_cid }
 
   ajax_call :post, '/timeline_data' do |data|
     get_timeline_data(data)

@@ -264,6 +264,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     props.event.preventDefault();
                 });
                 timeline.on('select', async function (properties) {
+                    const newTab = window.open('', '_blank')
+                    if (newTab) {
+//                        newTab.document.open()
+                        newTab.location.href = '/logs/cid/' + properties.items[0]
+//                        newTab.document.close()
+                    }
+                    return;
+
                     const selectedItemId = properties.items[0];
                     if (selectedItemId) {
                         const selectedItem = all_items.get(selectedItemId);
