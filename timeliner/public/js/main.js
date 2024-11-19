@@ -101,28 +101,44 @@ function filter_container_events(container_events_dataset, tracking_events, take
         }
     });
 }
-async function inspectContainerEvents(selectedItemId, listOfEvents){
-    const start_container_events = filter_container_events(container_events_items, listOfEvents,true, selectedItemId);
+async function inspectContainerEvents(selectedItemId, listOfEvents) {
+    const start_container_events = filter_container_events(container_events_items, listOfEvents, true, selectedItemId);
     try {
         const newTab = window.open('', '_blank');
         if (newTab) {
             newTab.document.open();
-            const json_data = JSON.stringify(start_container_events, null, 2);
+            // Parse src_jsons for each event before stringifying
+            const processed_events = start_container_events.map(event => {
+                if (event.src_jsons) {
+                    try {
+                        // Parse the double-nested JSON structure
+                        event.src_jsons = JSON.parse(event.src_jsons).map(jsonArray =>
+                            jsonArray.map(item => JSON.parse(JSON.stringify(item)))[0]
+                        );
+                    } catch (e) {
+                        console.warn(`Failed to parse src_jsons for event ${event.id}:`, e);
+                        // Keep original if parsing fails
+                    }
+                }
+                return event;
+            });
+
+            const json_data = JSON.stringify(processed_events, null, 5);
             newTab.document.write(`
-                                    <html>
-                                        <head>
-                                            <title>Start events inspection</title>
-                                            <style>
-                                                body { font-family: Arial, sans-serif; padding: 20px; }
-                                                pre { background: #f4f4f4; padding: 10px; border: 1px solid #ddd; }
-                                            </style>
-                                        </head>
-                                        <body>
-                                            <h1>Container ${selectedItemId} start events inspection</h1>
-                                            <pre>${json_data}</pre>
-                                        </body>
-                                    </html>
-                                `);
+                <html>
+                    <head>
+                        <title>Start events inspection</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; padding: 20px; }
+                            pre { background: #f4f4f4; padding: 10px; border: 1px solid #ddd; }
+                        </style>
+                    </head>
+                    <body>
+                        <h1>Container ${selectedItemId} start events inspection</h1>
+                        <pre>${json_data}</pre>
+                    </body>
+                </html>
+            `);
             newTab.document.close();
         }
     } catch (error) {
