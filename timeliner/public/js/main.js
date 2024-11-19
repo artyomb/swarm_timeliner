@@ -56,7 +56,7 @@ function refreshDataWithReplacement(data) {
             group: item.groupId, start: time_start, end: time_end,
             title: `Item details: container with id = ${item.id} <br>Start time = ${time_start} End time ${time_end}`,
             className: 'clickable' + statusClasses,
-            backend_init: { method: 'POST', headers: { 'Content-Type': 'application/json'}, body: JSON.stringify({ cont_id: item.id}),}
+            idFofLogs: item.id
         };
     });
     const uploaded_health_checks_items =  data.items.ranges.health_checks.map(item => {
@@ -221,7 +221,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const selectedItemId = props.item;
                     if (selectedItemId) {
                         const selectedItem = all_items.get(selectedItemId);
-                        if (selectedItem.backend_init) {
+                        if (selectedItem.idFofLogs) {
                             const menu = document.createElement('div');
                             menu.className = 'context-menu';
                             menu.style.position = 'absolute';
@@ -264,52 +264,15 @@ document.addEventListener('DOMContentLoaded', () => {
                     props.event.preventDefault();
                 });
                 timeline.on('select', async function (properties) {
-                    const newTab = window.open('', '_blank')
-                    if (newTab) {
-//                        newTab.document.open()
-                        newTab.location.href = '/logs/cid/' + properties.items[0]
-//                        newTab.document.close()
-                    }
-                    return;
-
                     const selectedItemId = properties.items[0];
                     if (selectedItemId) {
                         const selectedItem = all_items.get(selectedItemId);
-                        if (selectedItem.backend_init) {
-                            const backend_path = '/get_cont_logs';
-                            try {
-                                const logs_response = await fetch(backend_path, selectedItem.backend_init);
-                                if (!logs_response.ok) {
-                                    throw new Error(`Error: ${logs_response.statusText}`);
-                                }
-                                const logs_data = await logs_response.json();
-                                const newTab = window.open('', '_blank');
-
-                                // Write the JSON response to the new tab as formatted HTML
-                                if (newTab) {
-                                    newTab.document.open();
-                                    const json_data = JSON.parse(logs_data);
-                                    newTab.document.write(`
-                                    <html>
-                                        <head>
-                                            <title>Response Data</title>
-                                            <style>
-                                                body { font-family: Arial, sans-serif; padding: 20px; }
-                                                pre { background: #f4f4f4; padding: 10px; border: 1px solid #ddd; }
-                                            </style>
-                                        </head>
-                                        <body>
-                                            <h1>Response Data</h1>
-                                            <pre>${json_data.message}</pre>
-                                        </body>
-                                    </html>
-                                `);
-                                    newTab.document.close();
-                                }
-                            } catch (error) {
-                                console.error("Error fetching data:", error);
-                                alert("An error occurred while fetching data. Check the console for details.");
+                        if (selectedItem.idFofLogs) {
+                            const newTab = window.open('', '_blank')
+                            if (newTab) {
+                                newTab.location.href = '/logs/cid/' + selectedItem.idFofLogs;
                             }
+                            return;
                         }
                         if ((selectedItem.src_jsons !== undefined) && (selectedItem.src_jsons !== "[]")) {
                             try {

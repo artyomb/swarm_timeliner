@@ -1,20 +1,4 @@
 h1 Container logs
 p: b = params[:cid]
 
-pre = get_container_logs(params[:cid])
-
-/ javascript:
-/   let cid = '{{params[:cid]}}';
-/
-/   if (selectedItem.backend_init) {
-/       const backend_path = '/get_cont_logs';
-/       try {
-/           const logs_response = await fetch(backend_path, selectedItem.backend_init);
-/           if (!logs_response.ok) {
-/               throw new Error(`Error: ${logs_response.statusText}`);
-/           }
-/           const logs_data = await logs_response.json();
-/       }catch(...){
-/       // ...
-/       }
-/   }
+pre = get_container_logs(params[:cid])[:message]
