@@ -19,10 +19,10 @@ BASE_LOKI_PORT = ENV.fetch('BASE_LOKI_PORT', '3100').to_i
 
 LOKI_BATCH_SIZE = ENV.fetch('LOKI_BATCH_SIZE', 1000).to_i
 
-LOKI_CLIENT = LokiClient.new(BASE_LOKI_HOST, port: BASE_LOKI_PORT, **{limit: LOKI_BATCH_SIZE, logger: Logger.new($stdout)})
 QUERY_GENERATOR = QueriesGenerator.new(ENV.fetch('TARGET_"JOB', 'docker_events'))
 
 def get_timeline_data(data)
+  loki_client = LokiClient.new(BASE_LOKI_HOST, port: BASE_LOKI_PORT, **{limit: LOKI_BATCH_SIZE, logger: Logger.new($stdout)})
   since = data[:since]
   collect_health_checks = data[:collect_health_checks]
   load_source_jsons = data[:load_source_jsons]
@@ -42,7 +42,7 @@ def get_timeline_data(data)
                         end
                        end
   query = QUERY_GENERATOR.generate_query(collect_health_checks)
-  data = LOKI_CLIENT.query_range(query, Time.at(default_start_time), Time.at(default_end_time))
+  data = loki_client.query_range(query, Time.at(default_start_time), Time.at(default_end_time))
   services = {}
   cur_counter = 0
   data.each do |data_rec|
