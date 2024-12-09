@@ -80,7 +80,7 @@ function refreshDataWithReplacement(data) {
         return {
             type: 'point', ext_code: item.ext_code, content: item.action.length > 9 ? item.action.substring(0, 6) + '...' : item.action, src_jsons: item.src_jsons,
             group: item.groupId, start: time_start, end: null, title: `Event with unknown service: id = ${item.id}<br>Appeared at ${time_start}; Exit code: ${item.ext_code}`,
-            className: 'event-point' + (((item.src_jsons !== undefined) && item.src_jsons === "[]") ? '' : ' clickable')
+            className: 'event-point' + statusClasses + (((item.src_jsons !== undefined) && item.src_jsons === "[]") ? '' : ' clickable')
         };
     });
     service_groups.clear();
