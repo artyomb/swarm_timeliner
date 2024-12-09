@@ -13,6 +13,11 @@ function refreshDataWithReplacement(data) {
             id: group.id, content: 'Service container with events', title: `Container with id = ${group.id}`
         }
     });
+    const uploaded_unknown_service_subgroups = data.groups.unknown_service_subgroups.map(group => {
+        return {
+            id: group.id, content: `Unknown group with id: ${group.id}`, title: `For this subgroup service is unknown.\n But actions froms this group has shared id = ${group.id}`
+        }
+    });
     const uploaded_container_events_items = data.items.points.container_events.map(item => {
         const statusClasses = item.statuses.length ? ' ' + item.statuses.join(' ') : '';
         const time_start = new Date(item.start * 1000);
@@ -69,11 +74,30 @@ function refreshDataWithReplacement(data) {
             title: `Item details: health check with id = ${item.id} <br>Start time = ${time_start} End time ${time_end} Exit code: ${item.ext_code}`
         };
     });
+    const uploaded_unknown_service_group_event_items = data.items.points.unknown_service_group_events.map(item => {
+        const statusClasses = item.statuses.length ? ' ' + item.statuses.join(' ') : '';
+        const time_start = new Date(item.start * 1000);
+        return {
+            type: 'point', ext_code: item.ext_code, content: item.action.length > 9 ? item.action.substring(0, 6) + '...' : item.action, src_jsons: item.src_jsons,
+            group: item.groupId, start: time_start, end: null, title: `Event with unknown service: id = ${item.id}<br>Appeared at ${time_start}; Exit code: ${item.ext_code}`,
+            className: 'event-point' + (((item.src_jsons !== undefined) && item.src_jsons === "[]") ? '' : ' clickable')
+        };
+    });
     service_groups.clear();
     service_groups.add(uploaded_service_groups);
 
     containers_groups.clear();
     containers_groups.add(uploaded_container_groups);
+
+    unknown_service_subgroups.clear();
+    unknown_service_subgroups.add(uploaded_unknown_service_subgroups);
+
+
+    unknown_service_group.clear();
+    if (uploaded_unknown_service_subgroups.size > 0) {
+        unknown_service_group.add({id: "Unknown service group", content: "Groups and events without service",
+            nestedGroups: uploaded_unknown_service_subgroups.map(), title: "This group unite subgroups, which don't have service"});
+    }
 
     container_events_items.clear();
     container_events_items.add(uploaded_container_events_items);
@@ -92,6 +116,9 @@ function refreshDataWithReplacement(data) {
 
     health_checks_items.clear();
     health_checks_items.add(uploaded_health_checks_items);
+
+    unknown_service_group_event_items.clear();
+    unknown_service_group_event_items.add(uploaded_unknown_service_group_event_items);
 }
 
 function filter_container_events(container_events_dataset, tracking_events, take=false, container_id = ""){
@@ -156,6 +183,8 @@ async function inspectEndEvents(selectedItemId){
 
 const service_groups = new vis.DataSet([]);
 const containers_groups = new vis.DataSet([]);
+const unknown_service_group = new vis.DataSet([]);
+const unknown_service_subgroups = new vis.DataSet([]);
 
 const container_events_items = new vis.DataSet([]);
 const other_service_events_items = new vis.DataSet([]);
@@ -163,6 +192,7 @@ const image_update_service_events_items = new vis.DataSet([]);
 const service_update_events = new vis.DataSet([]);
 const containers_items = new vis.DataSet([]);
 const health_checks_items = new vis.DataSet([]);
+const unknown_service_group_event_items = new vis.DataSet([]);
 
 let all_groups = null;
 let all_items = null;
@@ -201,13 +231,21 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             const data = await response.json(); // Parse JSON data
             refreshDataWithReplacement(data)
-            all_groups = new vis.DataSet(service_groups.get().concat(containers_groups.get()));
+            all_groups = new vis.DataSet(service_groups.get().concat(
+                containers_groups.get().concat(
+                    unknown_service_group.get().concat(
+                        unknown_service_subgroups.get()
+                    )
+                )
+            ));
             all_items = new vis.DataSet(filter_container_events(container_events_items, CONTAINER_START_ACTIONS.concat(CONTAINER_STOP_ACTIONS), false).concat(
                 image_update_service_events_items.get().concat(
                     other_service_events_items.get().concat(
                         service_update_events.get().concat(
                             containers_items.get().concat(
-                                health_checks_items.get()
+                                health_checks_items.get().concat(
+                                    unknown_service_group_event_items.get()
+                                )
                             )
                         )
                     )
