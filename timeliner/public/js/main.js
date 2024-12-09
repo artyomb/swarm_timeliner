@@ -15,7 +15,7 @@ function refreshDataWithReplacement(data) {
     });
     const uploaded_unknown_service_subgroups = data.groups.unknown_service_subgroups.map(group => {
         return {
-            id: group.id, content: `Unknown group with id: ${group.id}`, title: `For this subgroup service is unknown.\n But actions froms this group has shared id = ${group.id}`
+            id: group.id, content: `Unknown group with id: ${group.id}`, title: `For this subgroup service is unknown.\nBut actions froms this group has shared id = ${group.id}`
         }
     });
     const uploaded_container_events_items = data.items.points.container_events.map(item => {
@@ -94,9 +94,11 @@ function refreshDataWithReplacement(data) {
 
 
     unknown_service_group.clear();
-    if (uploaded_unknown_service_subgroups.size > 0) {
+    if (uploaded_unknown_service_subgroups.length > 0) {
         unknown_service_group.add({id: "Unknown service group", content: "Groups and events without service",
-            nestedGroups: uploaded_unknown_service_subgroups.map(), title: "This group unite subgroups, which don't have service"});
+            nestedGroups: uploaded_unknown_service_subgroups.map(group =>  {
+                return group.id;
+            }), title: "This group unite subgroups, which don't have service"});
     }
 
     container_events_items.clear();
