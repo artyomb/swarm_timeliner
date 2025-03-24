@@ -228,8 +228,22 @@ document.addEventListener('DOMContentLoaded', () => {
             const timeSelectValue = document.getElementById('timeSelect').value;
             const healthChecks_CheckBox_Value = document.getElementById('healthChecks_CheckBox').checked;
             const load_source_jsons_checkbox_value = document.getElementById('load_source_jsons_checkbox').checked;
+            let responseTimeout = document.getElementById('responce_timeout').value;
+            try {
+                responseTimeout = parseInt(responseTimeout);
+                if (isNaN(responseTimeout) || responseTimeout <= 0) {
+                    responseTimeout = 10;
+                }
+            } catch (error) {
+                console.error('Invalid response timeout value:', error);
+                alert('Invalid response timeout value. Timeout set to 10 seconds.');
+                responseTimeout = 10;
+            }
             const response = await fetch(backend_path, {
-                method: 'POST', headers: { 'Content-Type': 'application/json'}, body: JSON.stringify({ since: timeSelectValue, collect_health_checks: healthChecks_CheckBox_Value, load_source_jsons: load_source_jsons_checkbox_value} ),
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json'},
+                body: JSON.stringify({ since: timeSelectValue, collect_health_checks: healthChecks_CheckBox_Value, load_source_jsons: load_source_jsons_checkbox_value} ),
+                signal: AbortSignal.timeout(responseTimeout * 1000)
             });
             const data = await response.json(); // Parse JSON data
             refreshDataWithReplacement(data)
