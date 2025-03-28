@@ -11,7 +11,8 @@ WORKDIR /app
 
 COPY .ruby-version Gemfile* /app/
 RUN #DEBUG_RESOLVER=1 bundle install
-RUN bundle install --jobs $(nproc)
+RUN bundle install --jobs $(nproc) --retry=3 && \
+    bundle clean --force && rm -rf /usr/local/bundle/cache/*
 
 FROM ruby:3.3.1-alpine AS deploy
 
